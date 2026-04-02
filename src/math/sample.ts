@@ -430,6 +430,14 @@ export function resample(
   // Integrated: mean value over each Voronoi interval
   // -----------------------------------------------------------------------
 
+  // Guard: at least two valid points needed to define integration intervals.
+  // With a single point, mids is empty and mids[0] returns undefined, which
+  // causes NaN edges that silently pass the a < xMin || b > xMax guard
+  // (NaN comparisons are false) and produce NaN output.
+  if (valid.length < 2) {
+    return { index: new Float64Array(0), values: new Float64Array(0) };
+  }
+
   // Compute midpoints between consecutive valid sample points
   const mids = new Float64Array(valid.length - 1);
   for (let i = 0; i < mids.length; i++) {

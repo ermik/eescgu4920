@@ -46,7 +46,7 @@ function findSegment(xKnown: number[], x: number): number {
   if (x >= xKnown[n - 1]) return n - 2;
 
   let lo = 0;
-  let hi = n - 2;
+  let hi = n - 1;
   while (lo < hi - 1) {
     const mid = (lo + hi) >>> 1;
     if (xKnown[mid] <= x) lo = mid;
