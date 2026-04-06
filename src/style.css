@@ -6,11 +6,15 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 :root {
   --sidebar-width: 320px;
   --statusbar-height: 24px;
+  --menubar-height: 30px;
   --color-bg: #ffffff;
   --color-bg-alt: #f5f5f5;
   --color-border: #e0e0e0;
@@ -19,6 +23,927 @@ body {
   --color-text-muted: #666666;
 }
 
+/* =========================================================================
+   B1 — App Shell Layout
+   ========================================================================= */
+
 #app {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.as-menubar {
+  height: var(--menubar-height);
+  min-height: var(--menubar-height);
+  display: flex;
+  align-items: center;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 100;
+  padding: 0 4px;
+  user-select: none;
+}
+
+.as-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.as-sidebar {
+  width: var(--sidebar-width);
+  min-width: 200px;
+  border-right: 1px solid var(--color-border);
+  overflow: auto;
+  background: var(--color-bg);
+}
+
+.as-sidebar-resize {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.as-sidebar-resize:hover,
+.as-sidebar-resize.as-resizing {
+  background: var(--color-accent);
+}
+
+.as-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.as-statusbar {
+  height: var(--statusbar-height);
+  min-height: var(--statusbar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: var(--color-bg-alt);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================================
+   B3 — Tree Widget
+   ========================================================================= */
+
+.as-tree {
+  padding: 4px 0;
+}
+
+/* Worksheet header */
+.as-tree-ws-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.as-tree-ws-header:hover {
+  background: #eaeaea;
+}
+
+.as-tree-ws-focused {
+  background: #e0edf7;
+  border-left: 3px solid var(--color-accent);
+  padding-left: 5px;
+}
+
+.as-tree-ws-focused:hover {
+  background: #d4e4f0;
+}
+
+.as-tree-ws-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.as-tree-ws-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+}
+
+/* Item rows */
+.as-tree-ws-items {
+  /* collapsible container */
+}
+
+.as-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 24px;
+  cursor: default;
+  user-select: none;
+  min-height: 24px;
+  min-width: max-content;
+}
+
+.as-tree-item:nth-child(odd) {
+  background: var(--color-bg);
+}
+
+.as-tree-item:nth-child(even) {
+  background: var(--color-bg-alt);
+}
+
+.as-tree-item-selected {
+  background: rgba(0, 120, 215, 0.15) !important;
+}
+
+.as-tree-item-dragging {
+  opacity: 0.4;
+}
+
+.as-tree-item-drag-over {
+  border-top: 2px solid var(--color-accent);
+}
+
+.as-tree-item-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  width: 18px;
+}
+
+.as-tree-item-name {
+  flex: 1;
+  min-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.as-tree-item-id {
+  width: 100px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.as-tree-item-type {
+  width: 70px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.as-tree-item-x,
+.as-tree-item-y {
+  width: 60px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.as-tree-item-color {
+  width: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.as-color-btn {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Inline editing input */
+.as-tree-inline-input {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  padding: 0 2px;
+  border: 1px solid var(--color-accent);
+  border-radius: 2px;
+  outline: none;
+  background: var(--color-bg);
+}
+
+/* =========================================================================
+   B3 — Context Menu
+   ========================================================================= */
+
+.as-context-menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  min-width: 140px;
+  padding: 4px 0;
+}
+
+.as-context-menu-item {
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.as-context-menu-item:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+.as-context-menu-separator {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+/* =========================================================================
+   B3 — Tooltip
+   ========================================================================= */
+
+.as-tooltip {
+  position: fixed;
+  z-index: 300;
+  background: #fffde7;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  max-width: 400px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  pointer-events: none;
+}
+
+/* =========================================================================
+   B4 — Import Dialog
+   ========================================================================= */
+
+.as-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.as-modal {
+  background: var(--color-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  width: 720px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  outline: none;
+}
+
+.as-import-header {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.as-import-dropzone {
+  margin: 12px 16px;
+  padding: 20px;
+  border: 2px dashed var(--color-border);
+  border-radius: 6px;
+  text-align: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.as-import-dropzone:hover,
+.as-import-dropzone-active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.as-import-table-container {
+  flex: 1;
+  overflow: auto;
+  margin: 0 16px;
+}
+
+.as-import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.as-import-table th {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+  text-align: left;
+  font-weight: 600;
+  cursor: grab;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.as-import-th-drag-over {
+  background: rgba(0, 120, 215, 0.15) !important;
+}
+
+.as-import-table td {
+  border: 1px solid var(--color-border);
+  padding: 3px 8px;
+  white-space: nowrap;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+}
+
+.as-import-cell-empty {
+  background: #ffdab9;
+}
+
+.as-import-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.as-import-checkbox-label {
+  font-size: 12px;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.as-import-status {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  min-height: 28px;
+}
+
+/* =========================================================================
+   B5 — Menu Bar
+   ========================================================================= */
+
+.as-menu {
+  position: relative;
+}
+
+.as-menu-trigger {
+  background: none;
+  border: none;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-text);
+  border-radius: 4px;
+}
+
+.as-menu-trigger:hover,
+.as-menu-trigger-active {
+  background: rgba(0,0,0,0.08);
+}
+
+.as-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 150;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  min-width: 220px;
+  padding: 4px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.as-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.as-menu-item:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+.as-menu-item-disabled {
+  color: var(--color-text-muted) !important;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.as-menu-label {
+  flex: 1;
+}
+
+.as-menu-shortcut {
+  margin-left: 24px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+.as-menu-item:hover .as-menu-shortcut {
+  color: rgba(255,255,255,0.75);
+}
+
+.as-menu-separator {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+/* =========================================================================
+   B7 — Window Manager / Tabs
+   ========================================================================= */
+
+.as-tab-bar {
+  display: flex;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 28px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.as-tab-bar:empty {
+  display: none;
+}
+
+.as-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+  border-right: 1px solid var(--color-border);
+  white-space: nowrap;
+  font-size: 12px;
+  max-width: 180px;
+}
+
+.as-tab:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.as-tab-active {
+  background: var(--color-bg);
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.as-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.as-tab-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  color: var(--color-text-muted);
+  border-radius: 2px;
+}
+
+.as-tab-close:hover {
+  background: rgba(0,0,0,0.1);
+  color: var(--color-text);
+}
+
+.as-window-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.as-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  font-size: 15px;
+}
+
+/* =========================================================================
+   Shared — Buttons
+   ========================================================================= */
+
+.as-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.as-btn:hover {
+  background: var(--color-bg-alt);
+}
+
+/* =========================================================================
+   D — Feature Window Styles
+   ========================================================================= */
+
+/* Window root containers */
+.as-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+/* Inner tab bar (D1, D6) */
+.as-tab-inner-bar {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+  flex-shrink: 0;
+}
+
+.as-tab-inner {
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text);
+}
+
+.as-tab-inner:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.as-tab-inner-active {
+  border-bottom-color: var(--color-accent);
+  background: var(--color-bg);
+}
+
+.as-tab-inner-panel {
+  display: none;
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.as-tab-inner-panel-active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Data table (D1, D6) */
+.as-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.as-data-table th {
+  background: var(--color-bg-alt);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.as-data-table td {
+  border: 1px solid var(--color-border);
+  padding: 3px 8px;
+  text-align: right;
+}
+
+.as-row-duplicate {
+  background: #fffde7 !important;
+}
+
+.as-cell-nan {
+  background: #ffccbc !important;
+}
+
+/* Stats table (D1) */
+.as-stats-table {
+  border-collapse: collapse;
+  margin: 8px;
+}
+
+.as-stats-table td {
+  padding: 3px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.as-stats-table td:first-child {
+  font-weight: 600;
+}
+
+.as-stats-table td:last-child {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  text-align: right;
+}
+
+/* Info section (D1, D6) */
+.as-info-section {
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.as-info-history {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.as-info-comment {
+  width: 100%;
+  min-height: 60px;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px;
+  resize: vertical;
+}
+
+/* Toolbar (D2, D3, D4, D5) */
+.as-display-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.as-display-toolbar label {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.as-display-toolbar select,
+.as-display-toolbar input {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.as-display-toolbar input[type=number] {
+  width: 70px;
+}
+
+/* Params form (D5, D7, D8) */
+.as-params-group {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.as-params-group label {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.as-params-group input,
+.as-params-group select {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.as-params-group input[type=number] {
+  width: 80px;
+}
+
+.as-params-group input:disabled,
+.as-params-group select:disabled {
+  opacity: 0.4;
+}
+
+/* Tab pane — content area inside a tabbed window */
+.as-tab-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Plot container */
+.as-plot-container {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+/* Button bar at bottom */
+.as-button-bar {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+  flex-shrink: 0;
+}
+
+/* Pointers table (D6 interpolation) */
+.as-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.as-control-row label {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.as-control-row select {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.as-pointers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.as-pointers-table th {
+  background: var(--color-bg-alt);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border: 1px solid var(--color-border);
+  padding: 4px 8px;
+}
+
+.as-pointers-table td {
+  border: 1px solid var(--color-border);
+  padding: 3px 8px;
+  text-align: right;
+}
+
+.as-pointers-table tr:nth-child(even) {
+  background: var(--color-bg-alt);
+}
+
+/* Insolation two-column layout (D8) */
+.as-insolation-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.as-insolation-ref {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Sinusoidal layout (D7b) */
+.as-sin-params {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.as-sin-params fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0;
+}
+
+.as-sin-params legend {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.as-sin-params label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+.as-sin-params input {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  width: 80px;
+}
+
+.as-formula {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* No-data message */
+.as-no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: 14px;
 }

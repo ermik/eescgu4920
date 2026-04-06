@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "bash scripts/test.sh",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -14,8 +14,10 @@
   },
   "devDependencies": {
     "@types/plotly.js": "^2.35.4",
+    "jsdom": "^29.0.1",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3",
-    "vite": "^6.3.1"
+    "vite": "^6.3.1",
+    "vitest": "^4.1.2"
   }
 }
