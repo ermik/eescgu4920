@@ -370,20 +370,80 @@ class ImportDialog {
       const color = generateColor(prevColor);
       prevColor = color;
 
-      const item: SeriesItem = {
-        id,
-        type: 'Series',
-        name: this.headers[yColIdx],
-        date: formatDate(),
-        comment: '',
-        history: `Imported series <BR>---> series <i><b>${id}</b></i>`,
-        xLabel: this.headers[xColIdx],
-        yLabel: this.headers[yColIdx],
-        color,
-        index: sortedX,
-        values: sortedY,
-      };
-      items.push(item);
+      // Check for duplicate X values (replicates)
+      let hasDuplicates = false;
+      for (let i = 1; i < sortedX.length; i++) {
+        if (sortedX[i] === sortedX[i - 1]) { hasDuplicates = true; break; }
+      }
+
+      if (hasDuplicates) {
+        // Create averaged series (group by X, mean Y)
+        const groups = new Map<number, number[]>();
+        for (let i = 0; i < sortedX.length; i++) {
+          const key = sortedX[i];
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(sortedY[i]);
+        }
+        const avgX = new Float64Array(groups.size);
+        const avgY = new Float64Array(groups.size);
+        let gi = 0;
+        for (const [x, ys] of groups) {
+          avgX[gi] = x;
+          avgY[gi] = ys.reduce((a, b) => a + b, 0) / ys.length;
+          gi++;
+        }
+
+        const avgId = generateId();
+        const avgColor = color;
+        items.push({
+          id: avgId,
+          type: 'Series',
+          name: this.headers[yColIdx] + ' (averaged)',
+          date: formatDate(),
+          comment: '',
+          history: `Imported series with replicates (averaged)<BR>---> series <i><b>${avgId}</b></i>`,
+          xLabel: this.headers[xColIdx],
+          yLabel: this.headers[yColIdx],
+          color: avgColor,
+          hasReplicates: true,
+          index: avgX,
+          values: avgY,
+        });
+
+        // Create original series with duplicates preserved
+        const origId = generateId();
+        const origColor = generateColor(avgColor);
+        prevColor = origColor;
+        items.push({
+          id: origId,
+          type: 'Series',
+          name: this.headers[yColIdx] + ' (replicates)',
+          date: formatDate(),
+          comment: '',
+          history: `Imported series with replicates (original)<BR>---> series <i><b>${origId}</b></i>`,
+          xLabel: this.headers[xColIdx],
+          yLabel: this.headers[yColIdx],
+          color: origColor,
+          hasReplicates: true,
+          index: sortedX,
+          values: sortedY,
+        });
+      } else {
+        const item: SeriesItem = {
+          id,
+          type: 'Series',
+          name: this.headers[yColIdx],
+          date: formatDate(),
+          comment: '',
+          history: `Imported series <BR>---> series <i><b>${id}</b></i>`,
+          xLabel: this.headers[xColIdx],
+          yLabel: this.headers[yColIdx],
+          color,
+          index: sortedX,
+          values: sortedY,
+        };
+        items.push(item);
+      }
     }
 
     if (items.length === 0) {

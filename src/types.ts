@@ -94,6 +94,8 @@ export interface SeriesItem extends BaseItem {
   yLabel: string;
   /** CSS hex colour string used for rendering, e.g. `"#1f77b4"`. */
   color: string;
+  /** True when the series has duplicate X values (replicates). */
+  hasReplicates?: boolean;
   /** X coordinates (the series index). */
   index: Float64Array;
   /** Y values parallel to `index`. */

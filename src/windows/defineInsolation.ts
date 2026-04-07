@@ -1,13 +1,15 @@
 /**
- * D8 — Insolation / Astronomical Series window.
+ * D8 / G1 — Insolation / Astronomical Series window.
  *
- * Full UI with parameter handling. Computation is stubbed pending Batch G.
+ * Full UI with real orbital computation via src/astro module.
  */
 
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem } from '../types';
+import type { AstroSolution, InsolationType } from '../astro/types';
 import { PlotEngine } from '../plot/engine';
 import { generateId, generateColor } from '../utils';
+import { computeOrbitalParams, computeInsolation } from '../astro/index';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -48,14 +50,14 @@ const SOLUTION_REFS: Record<string, string> = {
 };
 
 const SOLUTION_RANGES: Record<string, string> = {
-  Berger1978: 'Range: 0 to 1,000 kyr',
-  Laskar1993_01: 'Range: 0 to 20,000 kyr',
-  Laskar1993_11: 'Range: 0 to 20,000 kyr',
-  Laskar2004: 'Range: 0 to 50,000 kyr',
-  Laskar2010a: 'Range: 0 to 250,000 kyr (eccentricity only)',
-  Laskar2010b: 'Range: 0 to 250,000 kyr (eccentricity only)',
-  Laskar2010c: 'Range: 0 to 250,000 kyr (eccentricity only)',
-  Laskar2010d: 'Range: 0 to 250,000 kyr (eccentricity only)',
+  Berger1978: 'Range: unbounded (accuracy degrades beyond ~5 Myr)',
+  Laskar1993_01: 'Range: -20,000 to +10,000 kyr',
+  Laskar1993_11: 'Range: -20,000 to +10,000 kyr',
+  Laskar2004: 'Range: -101,000 to +21,000 kyr',
+  Laskar2010a: 'Range: -249,999 to 0 kyr (eccentricity only)',
+  Laskar2010b: 'Range: -249,999 to 0 kyr (eccentricity only)',
+  Laskar2010c: 'Range: -249,999 to 0 kyr (eccentricity only)',
+  Laskar2010d: 'Range: -249,999 to 0 kyr (eccentricity only)',
 };
 
 // ---------------------------------------------------------------------------
@@ -93,6 +95,13 @@ function getFieldEnabled(selectedType: string): Record<FieldKey, boolean> {
     return { solarConst: true, latitude: true, longitude1: false, longitude2: false };
   }
   return { solarConst: false, latitude: false, longitude1: false, longitude2: false };
+}
+
+function yLabelForType(type: string): string {
+  if (type.includes('insolation')) return type + ' [W/m\u00b2]';
+  if (type === 'Obliquity') return 'Obliquity [degrees]';
+  if (type.includes('Precession')) return type + ' [degrees]';
+  return type;
 }
 
 // ---------------------------------------------------------------------------
@@ -258,6 +267,7 @@ export function createDefineInsolationWindow(callbacks: {
   let traceId = -1;
   let currentIndex: Float64Array = new Float64Array(0);
   let currentValues: Float64Array = new Float64Array(0);
+  let computing = false;
 
   // --- Field enable/disable logic ---
   const fieldInputs: Record<FieldKey, HTMLInputElement> = {
@@ -300,47 +310,84 @@ export function createDefineInsolationWindow(callbacks: {
 
   updateFieldStates();
 
-  // --- Computation stub ---
-  function computePlaceholder() {
-    console.warn('Orbital computation not yet implemented \u2014 showing placeholder data');
+  // --- Real computation ---
+  async function computeReal() {
+    if (computing) return;
+    computing = true;
 
-    const s = parseFloat(startInput.value) || 0;
-    const e = parseFloat(endInput.value) || 1000;
-    const st = parseFloat(stepInput.value) || 1;
-    if (st <= 0) return;
+    try {
+      const selectedType = typeSelect.value as InsolationType;
+      const solution = solSelect.value as AstroSolution;
+      const solarConst = parseFloat(solarInput.value) || 1365;
+      const latitude = parseFloat(latInput.value) || 65;
+      const lon1 = parseFloat(lon1Input.value) || 90;
+      const lon2 = parseFloat(lon2Input.value) || 180;
+      const s = parseFloat(startInput.value) || 0;
+      const e = parseFloat(endInput.value) || 1000;
+      const st = parseFloat(stepInput.value) || 1;
+      if (st <= 0) return;
 
-    const pts: number[] = [];
-    for (let x = s; x <= e; x += st) {
-      pts.push(x);
-      if (pts.length > 50000) break; // safety cap
-    }
-    if (pts.length === 0) return;
+      const isReversed = dirSelect.value === 'Past > 0';
+      const isYr = unitSelect.value === 'yr';
 
-    currentIndex = new Float64Array(pts);
-    currentValues = new Float64Array(pts.length);
-    // Placeholder sine wave
-    for (let i = 0; i < pts.length; i++) {
-      currentValues[i] = Math.sin(2 * Math.PI * pts[i] / (Math.abs(e - s) || 1));
-    }
+      // Build display time array
+      const pts: number[] = [];
+      const lo = Math.min(s, e);
+      const hi = Math.max(s, e);
+      for (let x = lo; x <= hi; x += st) {
+        pts.push(x);
+        if (pts.length > 50000) break;
+      }
+      if (pts.length === 0) return;
 
-    if (traceId < 0) {
-      traceId = engine.addTrace({
-        x: currentIndex,
-        y: currentValues,
-        color: '#1f77b4',
-        width: 0.8,
-        name: typeSelect.value,
+      // Convert to kyr for internal computation
+      const tConvention = isReversed ? -1 : 1;
+      const tScale = isYr ? 1 / 1000 : 1;
+      const timeKyr = new Float64Array(pts.length);
+      for (let i = 0; i < pts.length; i++) {
+        timeKyr[i] = pts[i] * tConvention * tScale;
+      }
+
+      // Compute orbital parameters (may need to async-load Laskar tables)
+      const orbParams = await computeOrbitalParams(solution, timeKyr);
+
+      // Compute output values
+      const values = computeInsolation(selectedType, orbParams, {
+        solarConstant: solarConst,
+        latitude,
+        trueLongitude1: lon1,
+        trueLongitude2: lon2,
       });
-      engine.configureAxis('x', 0, { title: `Time (${unitSelect.value})` });
-      engine.configureAxis('y', 0, { title: typeSelect.value });
-    } else {
-      engine.updateTrace(traceId, { x: currentIndex, y: currentValues, name: typeSelect.value });
-      engine.configureAxis('x', 0, { title: `Time (${unitSelect.value})` });
-      engine.configureAxis('y', 0, { title: typeSelect.value });
+
+      // Update display
+      currentIndex = new Float64Array(pts);
+      currentValues = values;
+
+      const yLabel = yLabelForType(selectedType);
+
+      if (traceId < 0) {
+        traceId = engine.addTrace({
+          x: currentIndex,
+          y: currentValues,
+          color: '#1f77b4',
+          width: 0.8,
+          name: selectedType,
+        });
+        engine.configureAxis('x', 0, { title: `Time (${unitSelect.value})` });
+        engine.configureAxis('y', 0, { title: yLabel });
+      } else {
+        engine.updateTrace(traceId, { x: currentIndex, y: currentValues, name: selectedType });
+        engine.configureAxis('x', 0, { title: `Time (${unitSelect.value})` });
+        engine.configureAxis('y', 0, { title: yLabel });
+      }
+    } catch (err) {
+      console.error('Insolation computation error:', err);
+    } finally {
+      computing = false;
     }
   }
 
-  computePlaceholder();
+  void computeReal();
 
   // Debounce param changes (1 second)
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -348,7 +395,7 @@ export function createDefineInsolationWindow(callbacks: {
     if (debounceTimer !== null) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
-      computePlaceholder();
+      void computeReal();
     }, 1000);
   }
 
@@ -363,12 +410,8 @@ export function createDefineInsolationWindow(callbacks: {
   // Import
   btnImport.addEventListener('click', () => {
     const selectedType = typeSelect.value;
-    let yLabel = selectedType;
-    if (selectedType.includes('insolation')) yLabel += ' [W/m\u00b2]';
-    else if (selectedType === 'Obliquity') yLabel += ' [degrees]';
-    else if (selectedType.includes('Precession')) yLabel += ' [degrees]';
+    const yLabel = yLabelForType(selectedType);
 
-    // Batch F: history includes generated ID reference
     const id = generateId();
     const item: SeriesItem = {
       id,

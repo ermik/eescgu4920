@@ -27,7 +27,7 @@ import { Clipboard } from './ui/clipboard';
 import { WindowManager } from './ui/windowManager';
 import { showImportDialog } from './ui/importDialog';
 import { showAboutDialog } from './ui/aboutDialog';
-import { downloadWorksheet, openWorksheetFile } from './io/serialization';
+import { downloadWorksheet, deserializeWorksheet } from './io/serialization';
 import {
   validateDisplaySelection,
   validateFilterSelection,
@@ -48,7 +48,9 @@ import { createDisplayInfoWindow } from './windows/displayInfo';
 import { createDefineRandomWindow } from './windows/defineRandom';
 import { createDefineSinusoidalWindow } from './windows/defineSinusoidal';
 import { createDefineInsolationWindow } from './windows/defineInsolation';
+import { createDefineCorrelationWindow } from './windows/defineCorrelation';
 import { createDefineInterpolationWindow, applyInterpolation } from './windows/interpolation/index';
+import { importExcelWorksheet, exportExcelWorksheet } from './io/excel';
 
 // ---------------------------------------------------------------------------
 // In-memory worksheet store (single source of truth)
@@ -294,15 +296,48 @@ async function main(): Promise<void> {
   async function handleOpenWorksheet(): Promise<void> {
     setStatus('Opening worksheet...');
     const existingIds = new Set(worksheets.keys());
-    const ws = await openWorksheetFile(existingIds);
-    if (!ws) {
+
+    // Accept both .json and .xlsx files
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.analyseries.json,.xlsx';
+
+    const result = await new Promise<Worksheet | null>((resolve) => {
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+
+        try {
+          let ws: Worksheet;
+          if (file.name.endsWith('.xlsx')) {
+            ws = await importExcelWorksheet(file);
+          } else {
+            // JSON import
+            const text = await file.text();
+            ws = deserializeWorksheet(text);
+          }
+          if (existingIds.has(ws.id)) {
+            (ws as { id: string }).id = generateId();
+          }
+          ws.modified = true;
+          resolve(ws);
+        } catch (err) {
+          console.error('Failed to open worksheet:', err);
+          resolve(null);
+        }
+      });
+      input.addEventListener('cancel', () => resolve(null));
+      input.click();
+    });
+
+    if (!result) {
       setStatus('Open cancelled or failed.');
       return;
     }
-    worksheets.set(ws.id, ws);
-    tree.addWorksheet(ws);
-    tree.markModified(ws.id);
-    setStatus(`Opened worksheet "${ws.name}".`);
+    worksheets.set(result.id, result);
+    tree.addWorksheet(result);
+    tree.markModified(result.id);
+    setStatus(`Opened worksheet "${result.name}".`);
   }
 
   // -----------------------------------------------------------------------
@@ -318,6 +353,23 @@ async function main(): Promise<void> {
     setStatus(`Exported "${ws.name}".`);
   }
 
+  function handleExportExcel(): void {
+    const wsId = tree.getCurrentWsId();
+    if (!wsId) { setStatus('No worksheet selected.'); return; }
+    const ws = worksheets.get(wsId);
+    if (!ws) return;
+    const blob = exportExcelWorksheet(ws);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${ws.name}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setStatus(`Exported "${ws.name}" as Excel.`);
+  }
+
   // -----------------------------------------------------------------------
   // Menu definitions
   // -----------------------------------------------------------------------
@@ -330,7 +382,8 @@ async function main(): Promise<void> {
     { label: 'Save Worksheet', shortcut: 'Ctrl+S', action: () => { void saveCurrentWorksheet(); } },
     { label: 'Save All Worksheets', shortcut: 'Ctrl+Shift+S', action: () => { void saveAllWorksheets(); } },
     sep,
-    { label: 'Export Worksheet...', action: () => handleExportWorksheet() },
+    { label: 'Export Worksheet (JSON)...', action: () => handleExportWorksheet() },
+    { label: 'Export Worksheet (Excel)...', action: () => handleExportExcel() },
     sep,
     { label: 'Exit', shortcut: 'Q', action: () => handleExit() },
   ]);
@@ -379,6 +432,8 @@ async function main(): Promise<void> {
     { label: 'Define Interpolation', shortcut: 'Ctrl+I', action: () => handleDefineInterpolation() },
     { label: 'Apply Interpolation (Linear)', action: () => handleApplyInterpolation('Linear') },
     { label: 'Apply Interpolation (PCHIP)', action: () => handleApplyInterpolation('PCHIP') },
+    sep,
+    { label: 'Define Correlation', shortcut: 'Ctrl+R', action: () => handleDefineCorrelation() },
   ]);
 
   menuBar.addMenu('Help', [
@@ -777,6 +832,43 @@ async function main(): Promise<void> {
       }
     }
     if (count > 0) setStatus(`Applied interpolation (${mode}) to ${count} series.`);
+  }
+
+  // -----------------------------------------------------------------------
+  // Correlation handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineCorrelation(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length < 1 || seriesItems.length > 2) {
+      setStatus('Select 1 series (auto-correlation) or 2 series (cross-correlation).');
+      return;
+    }
+
+    const items = seriesItems.map(s => s.item as SeriesItem);
+    const winId = items.length === 1
+      ? 'correlation-' + items[0].id
+      : 'correlation-' + items[0].id + '-' + items[1].id;
+
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (item: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, item);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${item.name}" into "${ws.name}".`);
+    };
+
+    const win = createDefineCorrelationWindow(items, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
+      windowManager.close(winId);
+    };
+    windowManager.open(win);
   }
 
   // -----------------------------------------------------------------------
