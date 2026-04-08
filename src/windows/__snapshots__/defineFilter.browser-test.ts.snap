@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createDefineFilterWindow > snapshot of toolbar and button bar 1`] = `"<label>Window size:</label><input type="number" min="1" max="33" step="2">"`;
+
+exports[`createDefineFilterWindow > snapshot of toolbar and button bar 2`] = `"<button class="as-btn">Save filter</button><button class="as-btn">Save filter and series filtered</button><button class="as-btn">Close</button>"`;

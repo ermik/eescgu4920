@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MenuBar > snapshot of dropdown 1`] = `"<li class="as-menu-item"><span class="as-menu-label">New Worksheet</span><span class="as-menu-shortcut">Ctrl+N</span></li><li class="as-menu-item"><span class="as-menu-label">Open</span><span class="as-menu-shortcut">Ctrl+O</span></li><li class="as-menu-separator"></li><li class="as-menu-item"><span class="as-menu-label">Exit</span><span class="as-menu-shortcut">Q</span></li>"`;

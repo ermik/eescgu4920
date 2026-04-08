@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`WindowManager > snapshot of tab bar with 2 windows 1`] = `"<div class="as-tab" data-window-id="w1"><span class="as-tab-title">Window 1</span><button class="as-tab-close">×</button></div><div class="as-tab as-tab-active" data-window-id="w2"><span class="as-tab-title">Window 2</span><button class="as-tab-close">×</button></div>"`;

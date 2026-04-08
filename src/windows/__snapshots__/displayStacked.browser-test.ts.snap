@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createDisplayStackedWindow > snapshot of toolbar 1`] = `"<input type="checkbox" id="shared-x-checkbox"><label for="shared-x-checkbox">Shared horizontal axis</label>"`;

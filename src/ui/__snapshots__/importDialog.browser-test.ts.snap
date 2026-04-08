@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`showImportDialog > snapshot of modal structure 1`] = `"<div class="as-import-header">Paste tab-separated data with Ctrl+V, or drop a .txt/.csv/.tsv file.</div>"`;
+
+exports[`showImportDialog > snapshot of modal structure 2`] = `"<div class="as-import-dropzone">Drop file here or click to browse</div>"`;

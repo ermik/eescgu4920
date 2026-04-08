@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createDisplayInfoWindow > snapshot of filter info tab bar 1`] = `"<button class="as-tab-inner as-tab-inner-active" data-tab-id="params">Parameters</button><button class="as-tab-inner" data-tab-id="info">Info</button>"`;

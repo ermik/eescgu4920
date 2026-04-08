@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createDefineInterpolationWindow > snapshot of tab bar 1`] = `"<button class="as-tab as-tab-active">Plots</button><button class="as-tab">Pointers</button><button class="as-tab">Pointers Plot</button>"`;
