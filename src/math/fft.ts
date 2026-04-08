@@ -3,6 +3,15 @@
  *
  * Operates on interleaved real/imaginary Float64Arrays:
  *   [re0, im0, re1, im1, ...] with length = 2 * N where N is a power of 2.
+ *
+ * Kept as a hand-rolled implementation because no suitable browser-compatible
+ * FFT library was found that supports arbitrary input lengths with Float64Array
+ * precision. Evaluated and rejected:
+ *   - webfft: power-of-2 only, Float32Array (precision loss), WASM loading
+ *     complications in Vite.
+ *   - fft-js: power-of-2 only.
+ *   - ndarray-fft: arbitrary lengths but heavyweight ndarray dependency and
+ *     incompatible data format.
  */
 
 /**

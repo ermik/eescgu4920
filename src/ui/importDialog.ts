@@ -3,6 +3,7 @@
  * tab-separated data or file upload (.txt, .csv, .tsv).
  */
 
+import Papa from 'papaparse';
 import type { SeriesItem, InterpolationItem } from '../types';
 import { generateId, generateColor, isMonotonicIncreasing } from '../utils';
 import { formatDate } from './tree';
@@ -179,23 +180,20 @@ class ImportDialog {
   }
 
   private parseText(text: string): void {
-    // Normalise line endings
-    const normalised = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalised.split('\n').filter(line => line.trim() !== '');
+    const result = Papa.parse<string[]>(text, {
+      header: false,
+      skipEmptyLines: true,
+      dynamicTyping: false,
+    });
 
-    if (lines.length < 2) {
+    const rows = result.data;
+    if (rows.length < 2) {
       this.showStatus('Error: need at least a header row and one data row.');
       return;
     }
 
-    // Detect separator: tab, or comma if no tabs
-    const sep = lines[0].includes('\t') ? '\t' : ',';
-
-    this.headers = lines[0].split(sep).map(h => h.trim());
-    this.data = [];
-    for (let i = 1; i < lines.length; i++) {
-      this.data.push(lines[i].split(sep).map(c => c.trim()));
-    }
+    this.headers = rows[0].map(h => h.trim());
+    this.data = rows.slice(1).map(row => row.map(c => c.trim()));
 
     this.columnOrder = this.headers.map((_, i) => i);
     this.renderTable();

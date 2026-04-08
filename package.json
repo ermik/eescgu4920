@@ -10,10 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "idb": "^8.0.3",
+    "jstat": "^1.9.6",
+    "lit": "^3.3.2",
+    "papaparse": "^5.5.3",
     "plotly.js-dist-min": "^2.35.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/papaparse": "^5.5.2",
     "@types/plotly.js": "^2.35.4",
     "jsdom": "^29.0.1",
     "tsx": "^4.19.3",
