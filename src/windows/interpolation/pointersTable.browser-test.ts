@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { createPointersTable, updatePointersTable } from './pointersTable';
 import { InterpolationState } from './state';
 import type { TiePointConnection } from './types';
-import { mockSeriesItem, resetFixtureIds } from '../../fixtures';
+import { mockSeriesItem, resetFixtureIds, stripLitMarkers } from '../../fixtures';
 
 describe('pointersTable', () => {
   afterEach(() => resetFixtureIds());
@@ -71,6 +71,6 @@ describe('pointersTable', () => {
     const state = makeState();
     state.connections.push(conn(0, 0, 0), conn(1, 10, 12), conn(2, 20, 22));
     updatePointersTable(container, state);
-    expect(container.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(container.innerHTML)).toMatchSnapshot();
   });
 });
