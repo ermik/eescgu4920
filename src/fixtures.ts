@@ -3,6 +3,11 @@
  * Provides mock data factories with minimal valid data.
  */
 
+/** Strip lit-html comment markers (non-deterministic hashes) from HTML for stable snapshots. */
+export function stripLitMarkers(html: string): string {
+  return html.replace(/<!--\?lit\$[^>]*-->/g, '').replace(/<!--lit-part [^>]*-->/g, '').replace(/<!--\/lit-part-->/g, '');
+}
+
 import type {
   SeriesItem,
   FilterItem,

@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { showAboutDialog } from './aboutDialog';
+import { stripLitMarkers } from '../fixtures';
 
 describe('showAboutDialog', () => {
   afterEach(() => {
@@ -55,6 +56,6 @@ describe('showAboutDialog', () => {
   it('snapshot of modal content', () => {
     showAboutDialog();
     const modal = document.querySelector('.as-about-modal')!;
-    expect(modal.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(modal.innerHTML)).toMatchSnapshot();
   });
 });
