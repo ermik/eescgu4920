@@ -16,7 +16,7 @@ vi.mock('plotly.js-dist-min', () => {
 });
 
 import { createDefineSampleWindow } from './defineSample';
-import { mockSeriesItem, resetFixtureIds } from '../fixtures';
+import { mockSeriesItem, resetFixtureIds, stripLitMarkers } from '../fixtures';
 
 describe('createDefineSampleWindow', () => {
   afterEach(() => resetFixtureIds());
@@ -88,6 +88,6 @@ describe('createDefineSampleWindow', () => {
   it('snapshot of params panel', () => {
     const win = createDefineSampleWindow([mockSeriesItem()], noop);
     const params = win.element.querySelector('.as-params-group')!;
-    expect(params.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(params.innerHTML)).toMatchSnapshot();
   });
 });

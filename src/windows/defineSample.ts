@@ -4,6 +4,8 @@
  * Resampling with various interpolation methods and optional integration.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem, SampleItem, WorksheetItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -55,119 +57,70 @@ export function createDefineSampleWindow(
   function getTarget(): SeriesItem { return items[targetIdx]; }
   function getRef(): SeriesItem | null { return hasRef ? items[1 - targetIdx] : null; }
 
-  // Params group
-  const params = document.createElement('div');
-  params.className = 'as-params-group';
-
-  // Series dropdown (only if 2 items)
-  let seriesSelect: HTMLSelectElement | null = null;
-  if (hasRef) {
-    const sLabel = document.createElement('label');
-    sLabel.textContent = 'Sample series:';
-    params.appendChild(sLabel);
-
-    seriesSelect = document.createElement('select');
-    for (let i = 0; i < items.length; i++) {
-      const opt = document.createElement('option');
-      opt.value = String(i);
-      opt.textContent = items[i].name;
-      seriesSelect.appendChild(opt);
-    }
-    params.appendChild(seriesSelect);
-  }
-
-  // Radio: step mode (unique name per window to avoid cross-window collisions)
+  // Unique radio group name per window instance
   const radioGroupName = 'sample-mode-' + items[0].id;
-  const radioStep = document.createElement('input');
-  radioStep.type = 'radio';
-  radioStep.name = radioGroupName;
-  radioStep.value = 'step';
-  radioStep.checked = true;
-  radioStep.id = 'radio-step';
-  const radioStepLabel = document.createElement('label');
-  radioStepLabel.htmlFor = 'radio-step';
-  radioStepLabel.textContent = 'Sampling with step:';
 
-  const stepInput = document.createElement('input');
-  stepInput.type = 'number';
-  stepInput.value = '25';
-  stepInput.min = '0.001';
-  stepInput.step = 'any';
+  // Refs for elements that need JS access
+  const seriesSelectRef = createRef<HTMLSelectElement>();
+  const radioStepRef = createRef<HTMLInputElement>();
+  const radioXvalsRef = createRef<HTMLInputElement>();
+  const radioXvalsLabelRef = createRef<HTMLLabelElement>();
+  const stepInputRef = createRef<HTMLInputElement>();
+  const kindSelectRef = createRef<HTMLSelectElement>();
+  const intCheckRef = createRef<HTMLInputElement>();
+  const plotRef = createRef<HTMLDivElement>();
 
-  params.appendChild(radioStep);
-  params.appendChild(radioStepLabel);
-  params.appendChild(stepInput);
+  let closeCallback: (() => void) | null = null;
 
-  // Radio: x values mode
-  const radioXvals = document.createElement('input');
-  radioXvals.type = 'radio';
-  radioXvals.name = radioGroupName;
-  radioXvals.value = 'xvals';
-  radioXvals.id = 'radio-xvals';
-  radioXvals.disabled = !hasRef;
-  const radioXvalsLabel = document.createElement('label');
-  radioXvalsLabel.htmlFor = 'radio-xvals';
-  radioXvalsLabel.textContent = hasRef
-    ? `Using x values of: ${items[1].name}`
-    : 'Using x values of series (select 2 series)';
+  const template = html`
+    <div class="as-params-group">
+      ${hasRef ? html`
+        <label>Sample series:</label>
+        <select ${ref(seriesSelectRef)} @change=${onSeriesChange}>
+          ${items.map((item, i) => html`
+            <option value=${String(i)}>${item.name}</option>
+          `)}
+        </select>
+      ` : ''}
+      <input type="radio" name=${radioGroupName} value="step" id="radio-step"
+        .checked=${true} ${ref(radioStepRef)} @change=${immediateResample}>
+      <label for="radio-step">Sampling with step:</label>
+      <input type="number" value="25" min="0.001" step="any"
+        ${ref(stepInputRef)} @input=${scheduleResample}>
+      <input type="radio" name=${radioGroupName} value="xvals" id="radio-xvals"
+        .disabled=${!hasRef} ${ref(radioXvalsRef)} @change=${immediateResample}>
+      <label for="radio-xvals" ${ref(radioXvalsLabelRef)}>${hasRef
+        ? `Using x values of: ${items[1].name}`
+        : 'Using x values of series (select 2 series)'}</label>
+      <label>Kind:</label>
+      <select ${ref(kindSelectRef)} @change=${immediateResample}>
+        ${(['nearest', 'zero', 'linear', 'quadratic', 'cubic'] as const).map(k => html`
+          <option value=${k} .selected=${k === 'linear'}>${k}</option>
+        `)}
+      </select>
+      <input type="checkbox" id="sample-int" ${ref(intCheckRef)} @change=${immediateResample}>
+      <label for="sample-int">Integration</label>
+    </div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+    <div class="as-button-bar">
+      <button class="as-btn" @click=${onSaveSample}>Save sample</button>
+      <button class="as-btn" @click=${onSaveBoth}>Save sample and series sampled</button>
+      <button class="as-btn" @click=${() => closeCallback?.()}>Close</button>
+    </div>
+  `;
 
-  params.appendChild(radioXvals);
-  params.appendChild(radioXvalsLabel);
+  render(template, el);
 
-  // Kind dropdown
-  const kindLabel = document.createElement('label');
-  kindLabel.textContent = 'Kind:';
-  const kindSelect = document.createElement('select');
-  for (const k of ['nearest', 'zero', 'linear', 'quadratic', 'cubic'] as const) {
-    const opt = document.createElement('option');
-    opt.value = k;
-    opt.textContent = k;
-    if (k === 'linear') opt.selected = true;
-    kindSelect.appendChild(opt);
-  }
-  params.appendChild(kindLabel);
-  params.appendChild(kindSelect);
+  // Access elements via refs after render
+  const stepInput = stepInputRef.value!;
+  const radioStep = radioStepRef.value!;
+  const radioXvalsLabel = radioXvalsLabelRef.value!;
+  const kindSelect = kindSelectRef.value!;
+  const intCheck = intCheckRef.value!;
+  const seriesSelect = hasRef ? seriesSelectRef.value! : null;
 
-  // Integration checkbox
-  const intCheck = document.createElement('input');
-  intCheck.type = 'checkbox';
-  intCheck.id = 'sample-int';
-  const intLabel = document.createElement('label');
-  intLabel.htmlFor = 'sample-int';
-  intLabel.textContent = 'Integration';
-  params.appendChild(intCheck);
-  params.appendChild(intLabel);
-
-  // Plot
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  // Button bar
-  const buttonBar = document.createElement('div');
-  buttonBar.className = 'as-button-bar';
-
-  const btnSaveSample = document.createElement('button');
-  btnSaveSample.className = 'as-btn';
-  btnSaveSample.textContent = 'Save sample';
-
-  const btnSaveBoth = document.createElement('button');
-  btnSaveBoth.className = 'as-btn';
-  btnSaveBoth.textContent = 'Save sample and series sampled';
-
-  const btnClose = document.createElement('button');
-  btnClose.className = 'as-btn';
-  btnClose.textContent = 'Close';
-
-  buttonBar.appendChild(btnSaveSample);
-  buttonBar.appendChild(btnSaveBoth);
-  buttonBar.appendChild(btnClose);
-
-  el.appendChild(params);
-  el.appendChild(plotContainer);
-  el.appendChild(buttonBar);
-
-  // PlotEngine
-  const engine = new PlotEngine(plotContainer);
+  // PlotEngine — must be created AFTER render()
+  const engine = new PlotEngine(plotRef.value!);
   let originalTraceId = -1;
   let sampledTraceId = -1;
   let vertLineIds: string[] = [];
@@ -202,7 +155,7 @@ export function createDefineSampleWindow(
 
   function doResample() {
     const target = getTarget();
-    const ref = getRef();
+    const refItem = getRef();
     const kind = kindSelect.value as InterpKind;
     const integrated = intCheck.checked;
     const useStep = radioStep.checked;
@@ -215,8 +168,8 @@ export function createDefineSampleWindow(
       const max = target.index[target.index.length - 1];
       samplePoints = generateStepPoints(min, max, step);
     } else {
-      if (!ref) return;
-      samplePoints = Array.from(ref.index);
+      if (!refItem) return;
+      samplePoints = Array.from(refItem.index);
     }
 
     if (samplePoints.length === 0) {
@@ -279,27 +232,18 @@ export function createDefineSampleWindow(
   // Initial resample
   doResample();
 
-  // Wire events
-  stepInput.addEventListener('input', scheduleResample);
-  radioStep.addEventListener('change', immediateResample);
-  radioXvals.addEventListener('change', immediateResample);
-  kindSelect.addEventListener('change', immediateResample);
-  intCheck.addEventListener('change', immediateResample);
-
-  if (seriesSelect) {
-    seriesSelect.addEventListener('change', () => {
-      targetIdx = parseInt(seriesSelect!.value, 10);
-      radioXvalsLabel.textContent = `Using x values of: ${getRef()?.name ?? ''}`;
-      // Rebuild original trace
-      engine.updateTrace(originalTraceId, {
-        x: getTarget().index,
-        y: getTarget().values,
-        color: getTarget().color,
-      });
-      engine.configureAxis('x', 0, { title: getTarget().xLabel });
-      engine.configureAxis('y', 0, { title: getTarget().yLabel });
-      immediateResample();
+  function onSeriesChange() {
+    targetIdx = parseInt(seriesSelect!.value, 10);
+    radioXvalsLabel.textContent = `Using x values of: ${getRef()?.name ?? ''}`;
+    // Rebuild original trace
+    engine.updateTrace(originalTraceId, {
+      x: getTarget().index,
+      y: getTarget().values,
+      color: getTarget().color,
     });
+    engine.configureAxis('x', 0, { title: getTarget().xLabel });
+    engine.configureAxis('y', 0, { title: getTarget().yLabel });
+    immediateResample();
   }
 
   // Save
@@ -308,12 +252,12 @@ export function createDefineSampleWindow(
     const useStep = radioStep.checked;
     const kind = kindSelect.value as InterpKind;
     const integrated = intCheck.checked;
-    const ref = getRef();
+    const refItem = getRef();
     const id = generateId();
 
     const paramsHtml = useStep
       ? `<li>Sampling with step : ${stepInput.value}<li>Kind : ${kind}<li>Integrated : ${integrated}`
-      : `<li>Using x-values of series ${ref?.name ?? 'ref'}<li>Kind : ${kind}<li>Integrated : ${integrated}`;
+      : `<li>Using x-values of series ${refItem?.name ?? 'ref'}<li>Kind : ${kind}<li>Integrated : ${integrated}`;
 
     return {
       id,
@@ -327,15 +271,15 @@ export function createDefineSampleWindow(
       step: useStep ? parseFloat(stepInput.value) : null,
       kind,
       integrated,
-      xCoords: useStep ? null : (ref ? Array.from(ref.index) : null),
+      xCoords: useStep ? null : (refItem ? Array.from(refItem.index) : null),
     };
   }
 
-  btnSaveSample.addEventListener('click', () => {
+  function onSaveSample() {
     callbacks.onSaveSample(makeSampleItem());
-  });
+  }
 
-  btnSaveBoth.addEventListener('click', () => {
+  function onSaveBoth() {
     const sampleItem = makeSampleItem();
     if (!lastSampledResult) return;
     const target = getTarget();
@@ -359,12 +303,7 @@ export function createDefineSampleWindow(
       values: lastSampledResult.values,
     };
     callbacks.onSaveSampleAndSeries(sampleItem, seriesItem);
-  });
-
-  let closeCallback: (() => void) | null = null;
-  btnClose.addEventListener('click', () => {
-    closeCallback?.();
-  });
+  }
 
   const id = 'sample-' + items[0].id;
 

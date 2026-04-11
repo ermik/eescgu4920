@@ -4,6 +4,9 @@
  * Four tabs: Data, Stats, Plot, Info.
  */
 
+import { html, render } from 'lit';
+import { repeat } from 'lit/directives/repeat.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem, WorksheetItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -122,7 +125,6 @@ function findDuplicateIndices(index: Float64Array): Set<number> {
 }
 
 // Batch F: Cap rows at 1000 for very large series (F8 edge case #5).
-// Rendering 100k+ rows freezes the browser.
 const DATA_TABLE_ROW_CAP = 1000;
 
 function buildDataTable(item: SeriesItem): HTMLElement {
@@ -131,68 +133,53 @@ function buildDataTable(item: SeriesItem): HTMLElement {
   container.style.flex = '1';
 
   if (item.index.length === 0) {
-    container.innerHTML = '<div class="as-no-data">No data</div>';
+    render(html`<div class="as-no-data">No data</div>`, container);
     return container;
   }
 
   const total = item.index.length;
   const capped = total > DATA_TABLE_ROW_CAP;
   const displayCount = capped ? DATA_TABLE_ROW_CAP : total;
-
-  if (capped) {
-    const notice = document.createElement('div');
-    notice.style.padding = '4px 8px';
-    notice.style.fontSize = '12px';
-    notice.style.color = '#888';
-    notice.style.background = '#fffbe6';
-    notice.style.borderBottom = '1px solid #eee';
-    notice.textContent = `Showing ${displayCount.toLocaleString()} of ${total.toLocaleString()} rows.`;
-    container.appendChild(notice);
-  }
-
-  const table = document.createElement('table');
-  table.className = 'as-data-table';
-
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  const thX = document.createElement('th');
-  thX.textContent = item.xLabel;
-  thX.className = 'as-data-th-x';
-  const thY = document.createElement('th');
-  thY.textContent = item.yLabel;
-  thY.className = 'as-data-th-y';
-  headerRow.appendChild(thX);
-  headerRow.appendChild(thY);
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
   const dups = findDuplicateIndices(item.index);
 
-  for (let i = 0; i < displayCount; i++) {
-    const tr = document.createElement('tr');
-    if (dups.has(item.index[i])) tr.className = 'as-row-duplicate';
+  const rows = Array.from({ length: displayCount }, (_, i) => ({
+    idx: i,
+    x: item.index[i],
+    y: item.values[i],
+    isDup: dups.has(item.index[i]),
+    isNan: isNaN(item.values[i]),
+  }));
 
-    const tdX = document.createElement('td');
-    tdX.textContent = formatNumber(item.index[i], 6);
-    tr.appendChild(tdX);
-
-    const tdY = document.createElement('td');
-    tdY.textContent = formatNumber(item.values[i], 6);
-    if (isNaN(item.values[i])) tdY.className = 'as-cell-nan';
-    tr.appendChild(tdY);
-
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  container.appendChild(table);
+  render(html`
+    ${capped ? html`
+      <div style="padding:4px 8px; font-size:12px; color:#888; background:#fffbe6; border-bottom:1px solid #eee">
+        Showing ${displayCount.toLocaleString()} of ${total.toLocaleString()} rows.
+      </div>
+    ` : ''}
+    <table class="as-data-table">
+      <thead>
+        <tr>
+          <th class="as-data-th-x">${item.xLabel}</th>
+          <th class="as-data-th-y">${item.yLabel}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${repeat(rows, (r) => r.idx, (r) => html`
+          <tr class=${r.isDup ? 'as-row-duplicate' : ''}>
+            <td>${formatNumber(r.x, 6)}</td>
+            <td class=${r.isNan ? 'as-cell-nan' : ''}>${formatNumber(r.y, 6)}</td>
+          </tr>
+        `)}
+      </tbody>
+    </table>
+  `, container);
 
   // Ctrl+C to copy as TSV (copies ALL data, not just displayed rows)
   container.tabIndex = 0;
   container.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
       const sel = document.getSelection();
-      if (sel && sel.toString().length > 0) return; // let browser handle text selection copy
+      if (sel && sel.toString().length > 0) return;
 
       e.preventDefault();
       const lines: string[] = [`${item.xLabel}\t${item.yLabel}`];
@@ -212,23 +199,20 @@ function buildStatsTable(item: SeriesItem): HTMLElement {
   container.style.flex = '1';
 
   const stats = computeStats(item.index, item.values);
-  const table = document.createElement('table');
-  table.className = 'as-stats-table';
-  const tbody = document.createElement('tbody');
 
-  for (const [key, label, fmt] of STAT_LABELS) {
-    const tr = document.createElement('tr');
-    const tdName = document.createElement('td');
-    tdName.textContent = label;
-    const tdVal = document.createElement('td');
-    tdVal.textContent = formatStat(stats[key], fmt);
-    tr.appendChild(tdName);
-    tr.appendChild(tdVal);
-    tbody.appendChild(tr);
-  }
+  render(html`
+    <table class="as-stats-table">
+      <tbody>
+        ${STAT_LABELS.map(([key, label, fmt]) => html`
+          <tr>
+            <td>${label}</td>
+            <td>${formatStat(stats[key], fmt)}</td>
+          </tr>
+        `)}
+      </tbody>
+    </table>
+  `, container);
 
-  table.appendChild(tbody);
-  container.appendChild(table);
   return container;
 }
 
@@ -236,42 +220,20 @@ function buildInfoPanel(item: SeriesItem): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'as-info-section';
 
-  const name = document.createElement('p');
-  name.innerHTML = `<b>${escapeHtml(item.name)}</b>`;
-  panel.appendChild(name);
-
-  const date = document.createElement('p');
-  date.textContent = item.date;
-  panel.appendChild(date);
-
-  const histLabel = document.createElement('p');
-  histLabel.innerHTML = '<b>History</b>';
-  panel.appendChild(histLabel);
-
-  const history = document.createElement('div');
-  history.className = 'as-info-history';
-  history.innerHTML = item.history || '<i>No history</i>';
-  panel.appendChild(history);
-
-  const commentLabel = document.createElement('p');
-  commentLabel.innerHTML = '<b>Comment</b>';
-  panel.appendChild(commentLabel);
-
-  const comment = document.createElement('textarea');
-  comment.className = 'as-info-comment';
-  comment.value = item.comment;
-  comment.addEventListener('input', () => {
-    item.comment = comment.value;
-  });
-  panel.appendChild(comment);
+  render(html`
+    <p><b>${item.name}</b></p>
+    <p>${item.date}</p>
+    <p><b>History</b></p>
+    <div class="as-info-history">
+      ${item.history ? unsafeHTML(item.history) : html`<i>No history</i>`}
+    </div>
+    <p><b>Comment</b></p>
+    <textarea class="as-info-comment" .value=${item.comment}
+      @input=${(e: Event) => { item.comment = (e.target as HTMLTextAreaElement).value; }}
+    ></textarea>
+  `, panel);
 
   return panel;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 // ---------------------------------------------------------------------------
@@ -331,8 +293,6 @@ export function createDisplaySingleWindow(item: SeriesItem): ManagedWindow {
   }
 
   // Intercept tab clicks to lazily init the plot when the Plot tab is shown.
-  // Uses capture phase + stopImmediatePropagation to prevent the default
-  // handler inside buildTabs from firing a redundant second switchTo.
   tabsEl.querySelector('.as-tab-inner-bar')!.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest('.as-tab-inner') as HTMLElement | null;
     if (!btn?.dataset.tabId) return;

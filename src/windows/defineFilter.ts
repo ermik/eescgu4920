@@ -4,6 +4,8 @@
  * Moving average smoothing with preview plot and save actions.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem, FilterItem, WorksheetItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -41,79 +43,10 @@ export function createDefineFilterWindow(
   const el = document.createElement('div');
   el.className = 'as-window as-define-filter-window';
 
-  // Toolbar
-  const toolbar = document.createElement('div');
-  toolbar.className = 'as-display-toolbar';
+  const wsRef = createRef<HTMLInputElement>();
+  const plotRef = createRef<HTMLDivElement>();
 
-  const wsLabel = document.createElement('label');
-  wsLabel.textContent = 'Window size:';
-
-  const wsInput = document.createElement('input');
-  wsInput.type = 'number';
-  wsInput.min = '1';
-  wsInput.max = '33';
-  wsInput.step = '2';
-  wsInput.value = '3';
-
-  toolbar.appendChild(wsLabel);
-  toolbar.appendChild(wsInput);
-
-  // Plot
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  // Button bar
-  const buttonBar = document.createElement('div');
-  buttonBar.className = 'as-button-bar';
-
-  const btnSaveFilter = document.createElement('button');
-  btnSaveFilter.className = 'as-btn';
-  btnSaveFilter.textContent = 'Save filter';
-
-  const btnSaveBoth = document.createElement('button');
-  btnSaveBoth.className = 'as-btn';
-  btnSaveBoth.textContent = 'Save filter and series filtered';
-
-  const btnClose = document.createElement('button');
-  btnClose.className = 'as-btn';
-  btnClose.textContent = 'Close';
-
-  buttonBar.appendChild(btnSaveFilter);
-  buttonBar.appendChild(btnSaveBoth);
-  buttonBar.appendChild(btnClose);
-
-  el.appendChild(toolbar);
-  el.appendChild(plotContainer);
-  el.appendChild(buttonBar);
-
-  // PlotEngine
-  const engine = new PlotEngine(plotContainer);
-  engine.beginUpdate();
-
-  const originalTraceId = engine.addTrace({
-    x: item.index,
-    y: item.values,
-    color: item.color,
-    width: 0.8,
-    name: 'Original',
-  });
-
-  // Compute initial filtered
-  let windowSize = 3;
-  let filteredResult = computeFiltered(item, windowSize);
-
-  const filteredTraceId = engine.addTrace({
-    x: filteredResult?.index ?? new Float64Array(0),
-    y: filteredResult?.values ?? new Float64Array(0),
-    color: '#000000',
-    width: 0.8,
-    opacity: 0.4,
-    name: 'Filtered',
-  });
-
-  engine.configureAxis('x', 0, { title: item.xLabel });
-  engine.configureAxis('y', 0, { title: item.yLabel });
-  engine.endUpdate();
+  let closeCallback: (() => void) | null = null;
 
   function computeFiltered(
     src: SeriesItem,
@@ -126,30 +59,25 @@ export function createDefineFilterWindow(
     }
   }
 
-  function updateFiltered() {
-    filteredResult = computeFiltered(item, windowSize);
-    engine.updateTrace(filteredTraceId, {
-      x: filteredResult?.index ?? new Float64Array(0),
-      y: filteredResult?.values ?? new Float64Array(0),
-    });
-  }
+  let windowSize = 3;
+  let filteredResult = computeFiltered(item, windowSize);
 
-  wsInput.addEventListener('input', () => {
-    let val = parseInt(wsInput.value, 10);
+  function handleInput() {
+    let val = parseInt(wsRef.value!.value, 10);
     if (isNaN(val)) return;
     val = ensureOdd(val);
     windowSize = val;
     updateFiltered();
-  });
+  }
 
-  wsInput.addEventListener('change', () => {
-    let val = parseInt(wsInput.value, 10);
+  function handleChange() {
+    let val = parseInt(wsRef.value!.value, 10);
     if (isNaN(val)) val = 3;
     val = ensureOdd(val);
     windowSize = val;
-    wsInput.value = String(val);
+    wsRef.value!.value = String(val);
     updateFiltered();
-  });
+  }
 
   // Batch F: history format matches Python `saveFilter` — includes ID and
   // structured parameter list.
@@ -166,11 +94,11 @@ export function createDefineFilterWindow(
     };
   }
 
-  btnSaveFilter.addEventListener('click', () => {
+  function handleSaveFilter() {
     callbacks.onSaveFilter(makeFilterItem());
-  });
+  }
 
-  btnSaveBoth.addEventListener('click', () => {
+  function handleSaveBoth() {
     const filterItem = makeFilterItem();
     const result = computeFiltered(item, windowSize);
     if (!result) return;
@@ -194,12 +122,56 @@ export function createDefineFilterWindow(
       values: result.values,
     };
     callbacks.onSaveFilterAndSeries(filterItem, seriesItem);
+  }
+
+  const template = html`
+    <div class="as-display-toolbar">
+      <label>Window size:</label>
+      <input type="number" min="1" max="33" step="2" value="3"
+        ${ref(wsRef)} @input=${handleInput} @change=${handleChange}>
+    </div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+    <div class="as-button-bar">
+      <button class="as-btn" @click=${handleSaveFilter}>Save filter</button>
+      <button class="as-btn" @click=${handleSaveBoth}>Save filter and series filtered</button>
+      <button class="as-btn" @click=${() => closeCallback?.()}>Close</button>
+    </div>
+  `;
+
+  render(template, el);
+
+  // PlotEngine — must be created AFTER render() so plotRef.value! is available
+  const engine = new PlotEngine(plotRef.value!);
+  engine.beginUpdate();
+
+  const originalTraceId = engine.addTrace({
+    x: item.index,
+    y: item.values,
+    color: item.color,
+    width: 0.8,
+    name: 'Original',
   });
 
-  let closeCallback: (() => void) | null = null;
-  btnClose.addEventListener('click', () => {
-    closeCallback?.();
+  const filteredTraceId = engine.addTrace({
+    x: filteredResult?.index ?? new Float64Array(0),
+    y: filteredResult?.values ?? new Float64Array(0),
+    color: '#000000',
+    width: 0.8,
+    opacity: 0.4,
+    name: 'Filtered',
   });
+
+  engine.configureAxis('x', 0, { title: item.xLabel });
+  engine.configureAxis('y', 0, { title: item.yLabel });
+  engine.endUpdate();
+
+  function updateFiltered() {
+    filteredResult = computeFiltered(item, windowSize);
+    engine.updateTrace(filteredTraceId, {
+      x: filteredResult?.index ?? new Float64Array(0),
+      y: filteredResult?.values ?? new Float64Array(0),
+    });
+  }
 
   return {
     id: 'filter-' + item.id,

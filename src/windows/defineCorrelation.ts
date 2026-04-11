@@ -6,6 +6,8 @@
  * Optional FFT acceleration.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -83,97 +85,54 @@ export function createDefineCorrelationWindow(
     ? `Auto-correlation: ${items[0].name}`
     : `Cross-correlation: ${items[0].name} × ${items[1].name}`;
 
-  // Controls row
-  const controlsRow = document.createElement('div');
-  controlsRow.style.display = 'flex';
-  controlsRow.style.gap = '12px';
-  controlsRow.style.alignItems = 'center';
-  controlsRow.style.padding = '8px';
-  controlsRow.style.flexWrap = 'wrap';
+  // Refs
+  const modeSelectRef = createRef<HTMLSelectElement>();
+  const fftCbRef = createRef<HTMLInputElement>();
+  const meanCbRef = createRef<HTMLInputElement>();
+  const maxLagRef = createRef<HTMLInputElement>();
+  const statusRef = createRef<HTMLDivElement>();
+  const plotRef = createRef<HTMLDivElement>();
 
-  // Mode dropdown
-  const modeLabel = document.createElement('label');
-  modeLabel.textContent = 'Mode:';
-  modeLabel.style.fontSize = '12px';
-  const modeSelect = document.createElement('select');
-  modeSelect.style.fontSize = '12px';
-  for (const m of ['correlation', 'covariance', 'crossproduct']) {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m;
-    modeSelect.appendChild(opt);
-  }
-  controlsRow.appendChild(modeLabel);
-  controlsRow.appendChild(modeSelect);
+  const template = html`
+    <div style="display:flex;gap:12px;align-items:center;padding:8px;flex-wrap:wrap">
+      <label style="font-size:12px">Mode:</label>
+      <select style="font-size:12px" ${ref(modeSelectRef)} @change=${compute}>
+        <option value="correlation">correlation</option>
+        <option value="covariance">covariance</option>
+        <option value="crossproduct">crossproduct</option>
+      </select>
+      <label style="font-size:12px">
+        <input type="checkbox" checked ${ref(fftCbRef)} @change=${compute}> Use FFT
+      </label>
+      <label style="font-size:12px">
+        <input type="checkbox" checked ${ref(meanCbRef)} @change=${compute}> Remove mean
+      </label>
+      ${isAuto ? html`
+        <label style="font-size:12px">Max lag:</label>
+        <input type="number" value="" placeholder="auto"
+          style="width:60px;font-size:12px"
+          ${ref(maxLagRef)} @change=${compute}>
+      ` : ''}
+    </div>
+    <div style="padding:0 8px;font-size:11px;color:#666" ${ref(statusRef)}></div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+    <div class="as-button-bar">
+      <button class="as-btn" @click=${handleImport}>Import series</button>
+      <button class="as-btn" @click=${() => closeCallback?.()}>Close</button>
+    </div>
+  `;
 
-  // Use FFT checkbox
-  const fftLabel = document.createElement('label');
-  fftLabel.style.fontSize = '12px';
-  const fftCb = document.createElement('input');
-  fftCb.type = 'checkbox';
-  fftCb.checked = true;
-  fftLabel.appendChild(fftCb);
-  fftLabel.appendChild(document.createTextNode(' Use FFT'));
-  controlsRow.appendChild(fftLabel);
+  render(template, el);
 
-  // Remove mean checkbox
-  const meanLabel = document.createElement('label');
-  meanLabel.style.fontSize = '12px';
-  const meanCb = document.createElement('input');
-  meanCb.type = 'checkbox';
-  meanCb.checked = true;
-  meanLabel.appendChild(meanCb);
-  meanLabel.appendChild(document.createTextNode(' Remove mean'));
-  controlsRow.appendChild(meanLabel);
-
-  // Max lag (auto-correlation only)
-  let maxLagInput: HTMLInputElement | null = null;
-  if (isAuto) {
-    const lagLabel = document.createElement('label');
-    lagLabel.textContent = 'Max lag:';
-    lagLabel.style.fontSize = '12px';
-    maxLagInput = document.createElement('input');
-    maxLagInput.type = 'number';
-    maxLagInput.value = '';
-    maxLagInput.placeholder = 'auto';
-    maxLagInput.style.width = '60px';
-    maxLagInput.style.fontSize = '12px';
-    controlsRow.appendChild(lagLabel);
-    controlsRow.appendChild(maxLagInput);
-  }
-
-  el.appendChild(controlsRow);
-
-  // Status / warning area
-  const statusEl = document.createElement('div');
-  statusEl.style.padding = '0 8px';
-  statusEl.style.fontSize = '11px';
-  statusEl.style.color = '#666';
-  el.appendChild(statusEl);
-
-  // Plot
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-  el.appendChild(plotContainer);
-
-  // Buttons
-  const buttonBar = document.createElement('div');
-  buttonBar.className = 'as-button-bar';
-
-  const btnImport = document.createElement('button');
-  btnImport.className = 'as-btn';
-  btnImport.textContent = 'Import series';
-
-  const btnClose = document.createElement('button');
-  btnClose.className = 'as-btn';
-  btnClose.textContent = 'Close';
-
-  buttonBar.appendChild(btnImport);
-  buttonBar.appendChild(btnClose);
-  el.appendChild(buttonBar);
+  // Access elements after render
+  const modeSelect = modeSelectRef.value!;
+  const fftCb = fftCbRef.value!;
+  const meanCb = meanCbRef.value!;
+  const maxLagInput = isAuto ? maxLagRef.value! : null;
+  const statusEl = statusRef.value!;
 
   // Engine
-  const engine = new PlotEngine(plotContainer);
+  const engine = new PlotEngine(plotRef.value!);
   let traceId = -1;
   let currentResult: CorrelationResult | null = null;
 
@@ -244,14 +203,8 @@ export function createDefineCorrelationWindow(
 
   compute();
 
-  // Recompute on changes
-  modeSelect.addEventListener('change', compute);
-  fftCb.addEventListener('change', compute);
-  meanCb.addEventListener('change', compute);
-  if (maxLagInput) maxLagInput.addEventListener('change', compute);
-
   // Import
-  btnImport.addEventListener('click', () => {
+  function handleImport() {
     if (!currentResult) return;
     const mode = modeSelect.value;
     const id = generateId();
@@ -273,10 +226,9 @@ export function createDefineCorrelationWindow(
       values: copyF64(currentResult.values),
     };
     callbacks.onImport(item);
-  });
+  }
 
   let closeCallback: (() => void) | null = null;
-  btnClose.addEventListener('click', () => closeCallback?.());
 
   const winId = isAuto
     ? 'correlation-' + items[0].id

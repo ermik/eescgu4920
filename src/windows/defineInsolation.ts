@@ -4,6 +4,9 @@
  * Full UI with real orbital computation via src/astro module.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem } from '../types';
 import type { AstroSolution, InsolationType } from '../astro/types';
@@ -114,156 +117,134 @@ export function createDefineInsolationWindow(callbacks: {
   const el = document.createElement('div');
   el.className = 'as-window as-define-insolation-window';
 
-  // Two-column layout
-  const layout = document.createElement('div');
-  layout.className = 'as-insolation-layout';
+  // Refs for elements that need JS access
+  const typeSelectRef = createRef<HTMLSelectElement>();
+  const solSelectRef = createRef<HTMLSelectElement>();
+  const solarInputRef = createRef<HTMLInputElement>();
+  const latInputRef = createRef<HTMLInputElement>();
+  const lon1InputRef = createRef<HTMLInputElement>();
+  const lon2InputRef = createRef<HTMLInputElement>();
+  const dirSelectRef = createRef<HTMLSelectElement>();
+  const unitSelectRef = createRef<HTMLSelectElement>();
+  const startInputRef = createRef<HTMLInputElement>();
+  const endInputRef = createRef<HTMLInputElement>();
+  const stepInputRef = createRef<HTMLInputElement>();
+  const refTextRef = createRef<HTMLDivElement>();
+  const rangeTextRef = createRef<HTMLDivElement>();
+  const plotRef = createRef<HTMLDivElement>();
 
-  const leftCol = document.createElement('div');
-  const rightCol = document.createElement('div');
-  rightCol.className = 'as-insolation-ref';
+  let closeCallback: (() => void) | null = null;
 
-  // --- Left column: form fields ---
-
-  function addField(parent: HTMLElement, label: string, inputEl: HTMLElement): void {
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.alignItems = 'center';
-    row.style.gap = '8px';
-    row.style.marginBottom = '4px';
-    const lbl = document.createElement('label');
-    lbl.textContent = label;
-    lbl.style.fontSize = '12px';
-    lbl.style.minWidth = '120px';
-    row.appendChild(lbl);
-    row.appendChild(inputEl);
-    parent.appendChild(row);
+  // --- Field row helper (returns a lit template) ---
+  function fieldRow(label: string, content: unknown) {
+    return html`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <label style="font-size:12px;min-width:120px">${label}</label>
+        ${content}
+      </div>
+    `;
   }
 
-  // Type dropdown
-  const typeSelect = document.createElement('select');
-  typeSelect.style.width = '100%';
-  typeSelect.style.fontSize = '12px';
-  for (const t of TYPES) {
-    if (t === '---') {
-      const opt = document.createElement('option');
-      opt.disabled = true;
-      opt.textContent = '────────────';
-      typeSelect.appendChild(opt);
-    } else {
-      const opt = document.createElement('option');
-      opt.value = t;
-      opt.textContent = t;
-      typeSelect.appendChild(opt);
-    }
-  }
-  addField(leftCol, 'Type:', typeSelect);
+  const template = html`
+    <div class="as-insolation-layout">
+      <div>
+        ${fieldRow('Type:', html`
+          <select style="width:100%;font-size:12px" ${ref(typeSelectRef)}
+            @change=${() => { updateFieldStates(); scheduleCompute(); }}>
+            ${TYPES.map(t =>
+              t === '---'
+                ? html`<option disabled>────────────</option>`
+                : html`<option value=${t}>${t}</option>`
+            )}
+          </select>
+        `)}
+        ${fieldRow('Solution:', html`
+          <select style="width:100%;font-size:12px" ${ref(solSelectRef)}
+            @change=${() => { updateFieldStates(); updateRefText(); scheduleCompute(); }}>
+            ${SOLUTIONS.map(s => html`<option value=${s}>${s}</option>`)}
+          </select>
+        `)}
+        ${fieldRow('Solar constant (W/m\u00b2):', html`
+          <input type="number" .value=${'1365'} step="any" min="1000" max="1500"
+            style="width:80px;font-size:12px" ${ref(solarInputRef)}
+            @input=${scheduleCompute}>
+        `)}
+        ${fieldRow('Latitude (\u00b0):', html`
+          <input type="number" .value=${'65'} step="any" min="-90" max="90"
+            style="width:80px;font-size:12px" ${ref(latInputRef)}
+            @input=${scheduleCompute}>
+        `)}
+        ${fieldRow('True longitude #1 (\u00b0):', html`
+          <input type="number" .value=${'90'} step="any" min="0" max="360"
+            style="width:80px;font-size:12px" ${ref(lon1InputRef)}
+            @input=${scheduleCompute}>
+        `)}
+        ${fieldRow('True longitude #2 (\u00b0):', html`
+          <input type="number" .value=${'180'} step="any" min="0" max="360"
+            style="width:80px;font-size:12px" ${ref(lon2InputRef)}
+            @input=${scheduleCompute}>
+        `)}
+        ${fieldRow('Time direction:', html`
+          <select style="font-size:12px" ${ref(dirSelectRef)}
+            @change=${scheduleCompute}>
+            <option value="Past < 0">Past &lt; 0</option>
+            <option value="Past > 0">Past &gt; 0</option>
+          </select>
+        `)}
+        ${fieldRow('Time unit:', html`
+          <select style="font-size:12px" ${ref(unitSelectRef)}
+            @change=${scheduleCompute}>
+            <option value="yr">yr</option>
+            <option value="kyr" selected>kyr</option>
+          </select>
+        `)}
+        ${fieldRow('Start:', html`
+          <input type="number" .value=${'0'} step="any"
+            style="width:80px;font-size:12px" ${ref(startInputRef)}
+            @input=${scheduleCompute}>
+        `)}
+        ${fieldRow('End:', html`
+          <input type="number" .value=${'1000'} step="any"
+            style="width:80px;font-size:12px" ${ref(endInputRef)}
+            @input=${scheduleCompute}>
+        `)}
+        ${fieldRow('Step:', html`
+          <input type="number" .value=${'1'} step="any"
+            style="width:80px;font-size:12px" ${ref(stepInputRef)}
+            @input=${scheduleCompute}>
+        `)}
+      </div>
+      <div class="as-insolation-ref">
+        <div ${ref(refTextRef)}>${unsafeHTML(SOLUTION_REFS[SOLUTIONS[0]] || '')}</div>
+        <div style="margin-top:8px" ${ref(rangeTextRef)}>${SOLUTION_RANGES[SOLUTIONS[0]] || ''}</div>
+      </div>
+    </div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+    <div class="as-button-bar">
+      <button class="as-btn" @click=${handleImport}>Import series</button>
+      <button class="as-btn" @click=${() => closeCallback?.()}>Close</button>
+    </div>
+  `;
 
-  // Solution dropdown
-  const solSelect = document.createElement('select');
-  solSelect.style.width = '100%';
-  solSelect.style.fontSize = '12px';
-  for (const s of SOLUTIONS) {
-    const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    solSelect.appendChild(opt);
-  }
-  addField(leftCol, 'Solution:', solSelect);
+  render(template, el);
 
-  // Numeric params
-  function makeNumInput(value: string, min?: string, max?: string): HTMLInputElement {
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.value = value;
-    input.step = 'any';
-    input.style.width = '80px';
-    input.style.fontSize = '12px';
-    if (min !== undefined) input.min = min;
-    if (max !== undefined) input.max = max;
-    return input;
-  }
+  // Grab element references after render
+  const typeSelect = typeSelectRef.value!;
+  const solSelect = solSelectRef.value!;
+  const solarInput = solarInputRef.value!;
+  const latInput = latInputRef.value!;
+  const lon1Input = lon1InputRef.value!;
+  const lon2Input = lon2InputRef.value!;
+  const dirSelect = dirSelectRef.value!;
+  const unitSelect = unitSelectRef.value!;
+  const startInput = startInputRef.value!;
+  const endInput = endInputRef.value!;
+  const stepInput = stepInputRef.value!;
+  const refText = refTextRef.value!;
+  const rangeText = rangeTextRef.value!;
 
-  const solarInput = makeNumInput('1365', '1000', '1500');
-  addField(leftCol, 'Solar constant (W/m\u00b2):', solarInput);
-
-  const latInput = makeNumInput('65', '-90', '90');
-  addField(leftCol, 'Latitude (\u00b0):', latInput);
-
-  const lon1Input = makeNumInput('90', '0', '360');
-  addField(leftCol, 'True longitude #1 (\u00b0):', lon1Input);
-
-  const lon2Input = makeNumInput('180', '0', '360');
-  addField(leftCol, 'True longitude #2 (\u00b0):', lon2Input);
-
-  // Time direction
-  const dirSelect = document.createElement('select');
-  dirSelect.style.fontSize = '12px';
-  for (const d of ['Past < 0', 'Past > 0']) {
-    const opt = document.createElement('option');
-    opt.value = d;
-    opt.textContent = d;
-    dirSelect.appendChild(opt);
-  }
-  addField(leftCol, 'Time direction:', dirSelect);
-
-  // Time unit
-  const unitSelect = document.createElement('select');
-  unitSelect.style.fontSize = '12px';
-  for (const u of ['yr', 'kyr']) {
-    const opt = document.createElement('option');
-    opt.value = u;
-    opt.textContent = u;
-    unitSelect.appendChild(opt);
-  }
-  unitSelect.value = 'kyr';
-  addField(leftCol, 'Time unit:', unitSelect);
-
-  // Start / End / Step
-  const startInput = makeNumInput('0');
-  addField(leftCol, 'Start:', startInput);
-  const endInput = makeNumInput('1000');
-  addField(leftCol, 'End:', endInput);
-  const stepInput = makeNumInput('1');
-  addField(leftCol, 'Step:', stepInput);
-
-  // --- Right column: reference info ---
-  const refText = document.createElement('div');
-  refText.innerHTML = SOLUTION_REFS[solSelect.value] || '';
-  rightCol.appendChild(refText);
-
-  const rangeText = document.createElement('div');
-  rangeText.style.marginTop = '8px';
-  rangeText.textContent = SOLUTION_RANGES[solSelect.value] || '';
-  rightCol.appendChild(rangeText);
-
-  layout.appendChild(leftCol);
-  layout.appendChild(rightCol);
-
-  // Plot
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  // Button bar
-  const buttonBar = document.createElement('div');
-  buttonBar.className = 'as-button-bar';
-
-  const btnImport = document.createElement('button');
-  btnImport.className = 'as-btn';
-  btnImport.textContent = 'Import series';
-
-  const btnClose = document.createElement('button');
-  btnClose.className = 'as-btn';
-  btnClose.textContent = 'Close';
-
-  buttonBar.appendChild(btnImport);
-  buttonBar.appendChild(btnClose);
-
-  el.appendChild(layout);
-  el.appendChild(plotContainer);
-  el.appendChild(buttonBar);
-
-  // Engine
-  const engine = new PlotEngine(plotContainer);
+  // Engine (must be created AFTER render)
+  const engine = new PlotEngine(plotRef.value!);
   let traceId = -1;
   let currentIndex: Float64Array = new Float64Array(0);
   let currentValues: Float64Array = new Float64Array(0);
@@ -301,12 +282,6 @@ export function createDefineInsolationWindow(callbacks: {
     refText.innerHTML = SOLUTION_REFS[solSelect.value] || '';
     rangeText.textContent = SOLUTION_RANGES[solSelect.value] || '';
   }
-
-  typeSelect.addEventListener('change', updateFieldStates);
-  solSelect.addEventListener('change', () => {
-    updateFieldStates();
-    updateRefText();
-  });
 
   updateFieldStates();
 
@@ -399,16 +374,8 @@ export function createDefineInsolationWindow(callbacks: {
     }, 1000);
   }
 
-  for (const input of [solarInput, latInput, lon1Input, lon2Input, startInput, endInput, stepInput]) {
-    input.addEventListener('input', scheduleCompute);
-  }
-  typeSelect.addEventListener('change', scheduleCompute);
-  solSelect.addEventListener('change', scheduleCompute);
-  dirSelect.addEventListener('change', scheduleCompute);
-  unitSelect.addEventListener('change', scheduleCompute);
-
   // Import
-  btnImport.addEventListener('click', () => {
+  function handleImport() {
     const selectedType = typeSelect.value;
     const yLabel = yLabelForType(selectedType);
 
@@ -427,10 +394,7 @@ export function createDefineInsolationWindow(callbacks: {
       values: copyF64(currentValues),
     };
     callbacks.onImport(item);
-  });
-
-  let closeCallback: (() => void) | null = null;
-  btnClose.addEventListener('click', () => closeCallback?.());
+  }
 
   return {
     id: 'insolation',

@@ -4,6 +4,8 @@
  * Read-only info windows opened when double-clicking a non-series item.
  */
 
+import { html, render } from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type {
   WorksheetItem,
@@ -81,42 +83,20 @@ function buildInfoPanel(item: WorksheetItem): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'as-info-section';
 
-  const name = document.createElement('p');
-  name.innerHTML = `<b>${escapeHtml(item.name)}</b>`;
-  panel.appendChild(name);
-
-  const date = document.createElement('p');
-  date.textContent = item.date;
-  panel.appendChild(date);
-
-  const histLabel = document.createElement('p');
-  histLabel.innerHTML = '<b>History</b>';
-  panel.appendChild(histLabel);
-
-  const history = document.createElement('div');
-  history.className = 'as-info-history';
-  history.innerHTML = item.history || '<i>No history</i>';
-  panel.appendChild(history);
-
-  const commentLabel = document.createElement('p');
-  commentLabel.innerHTML = '<b>Comment</b>';
-  panel.appendChild(commentLabel);
-
-  const comment = document.createElement('textarea');
-  comment.className = 'as-info-comment';
-  comment.value = item.comment;
-  comment.addEventListener('input', () => {
-    item.comment = comment.value;
-  });
-  panel.appendChild(comment);
+  render(html`
+    <p><b>${item.name}</b></p>
+    <p>${item.date}</p>
+    <p><b>History</b></p>
+    <div class="as-info-history">
+      ${item.history ? unsafeHTML(item.history) : html`<i>No history</i>`}
+    </div>
+    <p><b>Comment</b></p>
+    <textarea class="as-info-comment" .value=${item.comment}
+      @input=${(e: Event) => { item.comment = (e.target as HTMLTextAreaElement).value; }}
+    ></textarea>
+  `, panel);
 
   return panel;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +106,10 @@ function escapeHtml(text: string): string {
 function buildFilterWindow(item: FilterItem): HTMLElement {
   const paramsPanel = document.createElement('div');
   paramsPanel.className = 'as-info-section';
-  paramsPanel.innerHTML = `<p><b>Parameters</b></p><p>Moving average window size: <b>${item.windowSize}</b></p>`;
+  render(html`
+    <p><b>Parameters</b></p>
+    <p>Moving average window size: <b>${item.windowSize}</b></p>
+  `, paramsPanel);
 
   const { el } = buildTabs([
     { id: 'params', label: 'Parameters', content: paramsPanel },
@@ -143,15 +126,14 @@ function buildSampleWindow(item: SampleItem): HTMLElement {
   const paramsPanel = document.createElement('div');
   paramsPanel.className = 'as-info-section';
 
-  let paramsHtml = '<p><b>Parameters</b></p>';
-  if (item.step !== null) {
-    paramsHtml += `<p>Sampling with step: <b>${item.step}</b></p>`;
-  } else {
-    paramsHtml += `<p>Sampling using x-values of series</p>`;
-  }
-  paramsHtml += `<p>Kind: <b>${item.kind}</b></p>`;
-  paramsHtml += `<p>Integration: <b>${item.integrated ? 'yes' : 'no'}</b></p>`;
-  paramsPanel.innerHTML = paramsHtml;
+  render(html`
+    <p><b>Parameters</b></p>
+    ${item.step !== null
+      ? html`<p>Sampling with step: <b>${item.step}</b></p>`
+      : html`<p>Sampling using x-values of series</p>`}
+    <p>Kind: <b>${item.kind}</b></p>
+    <p>Integration: <b>${item.integrated ? 'yes' : 'no'}</b></p>
+  `, paramsPanel);
 
   const tabs: { id: string; label: string; content: HTMLElement }[] = [
     { id: 'params', label: 'Parameters', content: paramsPanel },
@@ -163,26 +145,16 @@ function buildSampleWindow(item: SampleItem): HTMLElement {
     coordsPanel.style.overflow = 'auto';
     coordsPanel.style.flex = '1';
 
-    const table = document.createElement('table');
-    table.className = 'as-data-table';
-    const thead = document.createElement('thead');
-    const hRow = document.createElement('tr');
-    const th = document.createElement('th');
-    th.textContent = 'X Coordinate';
-    hRow.appendChild(th);
-    thead.appendChild(hRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement('tbody');
-    for (const x of item.xCoords) {
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.textContent = formatNumber(x, 6);
-      tr.appendChild(td);
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    coordsPanel.appendChild(table);
+    render(html`
+      <table class="as-data-table">
+        <thead><tr><th>X Coordinate</th></tr></thead>
+        <tbody>
+          ${item.xCoords.map((x) => html`
+            <tr><td>${formatNumber(x, 6)}</td></tr>
+          `)}
+        </tbody>
+      </table>
+    `, coordsPanel);
 
     tabs.push({ id: 'coords', label: 'X Sampling Coordinates', content: coordsPanel });
   }
@@ -203,32 +175,24 @@ function buildInterpolationWindow(item: InterpolationItem): HTMLElement {
   pointersPanel.style.overflow = 'auto';
   pointersPanel.style.flex = '1';
 
-  const table = document.createElement('table');
-  table.className = 'as-pointers-table';
-  const thead = document.createElement('thead');
-  const hRow = document.createElement('tr');
-  const th1 = document.createElement('th');
-  th1.textContent = 'Distorted: X';
-  const th2 = document.createElement('th');
-  th2.textContent = `Reference: ${item.x1Name}`;
-  hRow.appendChild(th1);
-  hRow.appendChild(th2);
-  thead.appendChild(hRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  for (let i = 0; i < item.x2Coords.length; i++) {
-    const tr = document.createElement('tr');
-    const td1 = document.createElement('td');
-    td1.textContent = formatNumber(item.x2Coords[i], 6);
-    const td2 = document.createElement('td');
-    td2.textContent = formatNumber(item.x1Coords[i], 6);
-    tr.appendChild(td1);
-    tr.appendChild(td2);
-    tbody.appendChild(tr);
-  }
-  table.appendChild(tbody);
-  pointersPanel.appendChild(table);
+  render(html`
+    <table class="as-pointers-table">
+      <thead>
+        <tr>
+          <th>Distorted: X</th>
+          <th>Reference: ${item.x1Name}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${item.x2Coords.map((x2, i) => html`
+          <tr>
+            <td>${formatNumber(x2, 6)}</td>
+            <td>${formatNumber(item.x1Coords[i], 6)}</td>
+          </tr>
+        `)}
+      </tbody>
+    </table>
+  `, pointersPanel);
 
   // Pointers plot
   const plotPanel = document.createElement('div');
@@ -277,28 +241,22 @@ function buildInterpolationWindow(item: InterpolationItem): HTMLElement {
       const linearFn = createLinearInterpFn(sx2, sx1);
       const pchipFn = createPchipInterpFn(sx2, sx1);
 
-      // Numerical gradient dx2/dx1 using central differences.
-      // interpFn maps x2→x1, so d(x1)/d(x2) ≈ (f(x+h)-f(x-h))/(2h).
-      // We want dx2/dx1 = 1 / (dx1/dx2).
       const h = step * 0.01;
       const linearGrads: number[] = [];
       const pchipGrads: number[] = [];
       for (const x of xs) {
         const dlx1 = linearFn(x + h) - linearFn(x - h);
         const dpx1 = pchipFn(x + h) - pchipFn(x - h);
-        // Guard: when the interpolation is flat, dx1≈0 → gradient undefined
         linearGrads.push(Math.abs(dlx1) < 1e-15 ? NaN : (2 * h) / dlx1);
         pchipGrads.push(Math.abs(dpx1) < 1e-15 ? NaN : (2 * h) / dpx1);
       }
 
-      // Twin Y for gradients
       const twinYIdx = plotEngine.addTwinY(0, {
         title: 'Gradients (dx/dy)',
         titleColor: 'darkorange',
         side: 'right',
       });
 
-      // Linear gradient trace (solid)
       plotEngine.addTrace({
         x: xs,
         y: linearGrads,
@@ -309,7 +267,6 @@ function buildInterpolationWindow(item: InterpolationItem): HTMLElement {
         yAxisIndex: twinYIdx,
       });
 
-      // PCHIP gradient trace (dashed — use opacity to distinguish since PlotEngine uses lines)
       plotEngine.addTrace({
         x: xs,
         y: pchipGrads,
@@ -382,13 +339,11 @@ export function createDisplayInfoWindow(item: WorksheetItem): ManagedWindow {
     title: `${item.type}: ${item.name}`,
     element: el,
     onClose: () => {
-      // For interpolation, clean up the plot engine
       const pe = (contentEl as HTMLElement & { _plotEngine?: PlotEngine })._plotEngine;
       if (pe) pe.destroy();
     },
     syncWithItem: (changed: WorksheetItem) => {
       if (changed.id !== item.id) return;
-      // Update name display in the info panel
       const nameEl = contentEl.querySelector('.as-info-section p b');
       if (nameEl) nameEl.textContent = changed.name;
     },
