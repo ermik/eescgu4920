@@ -3,6 +3,8 @@
  * tab-separated data or file upload (.txt, .csv, .tsv).
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import Papa from 'papaparse';
 import type { SeriesItem, InterpolationItem } from '../types';
 import { generateId, generateColor, isMonotonicIncreasing } from '../utils';
@@ -29,11 +31,11 @@ class ImportDialog {
   private modal: HTMLElement;
   private statusEl: HTMLElement;
   private tableContainer: HTMLElement;
-  private dropMissingCb: HTMLInputElement;
+  private dropMissingCb!: HTMLInputElement;
 
   private headers: string[] = [];
   private data: string[][] = [];
-  private columnOrder: number[] = []; // logical column indices
+  private columnOrder: number[] = [];
 
   private onImportSeries: (items: SeriesItem[]) => void;
   private onImportPointers: (item: InterpolationItem) => void;
@@ -54,88 +56,44 @@ class ImportDialog {
     this.modal.className = 'as-modal';
     this.backdrop.appendChild(this.modal);
 
-    // Header instructions
-    const header = document.createElement('div');
-    header.className = 'as-import-header';
-    header.textContent = 'Paste tab-separated data with Ctrl+V, or drop a .txt/.csv/.tsv file.';
-    this.modal.appendChild(header);
+    const fileInputRef = createRef<HTMLInputElement>();
+    const dropZoneRef = createRef<HTMLDivElement>();
+    const dropMissingRef = createRef<HTMLInputElement>();
+    const tableRef = createRef<HTMLDivElement>();
+    const statusRef = createRef<HTMLDivElement>();
 
-    // Drop zone + file input
-    const dropZone = document.createElement('div');
-    dropZone.className = 'as-import-dropzone';
-    dropZone.textContent = 'Drop file here or click to browse';
+    render(html`
+      <div class="as-import-header">Paste tab-separated data with Ctrl+V, or drop a .txt/.csv/.tsv file.</div>
+      <div class="as-import-dropzone" ${ref(dropZoneRef)}
+        @click=${() => fileInputRef.value!.click()}
+        @dragover=${(e: DragEvent) => { e.preventDefault(); dropZoneRef.value!.classList.add('as-import-dropzone-active'); }}
+        @dragleave=${() => dropZoneRef.value!.classList.remove('as-import-dropzone-active')}
+        @drop=${(e: DragEvent) => {
+          e.preventDefault();
+          dropZoneRef.value!.classList.remove('as-import-dropzone-active');
+          const file = e.dataTransfer?.files[0];
+          if (file) this.readFile(file);
+        }}>Drop file here or click to browse</div>
+      <input type="file" accept=".txt,.csv,.tsv" style="display:none" ${ref(fileInputRef)}
+        @change=${() => {
+          const file = fileInputRef.value!.files?.[0];
+          if (file) this.readFile(file);
+        }}>
+      <div class="as-import-table-container" ${ref(tableRef)}></div>
+      <div class="as-import-controls">
+        <label class="as-import-checkbox-label">
+          <input type="checkbox" checked ${ref(dropMissingRef)}> Drop missing values
+        </label>
+        <button class="as-btn" @click=${() => this.handleImportSeries()}>Import series</button>
+        <button class="as-btn" @click=${() => this.handleImportPointers()}>Import pointers</button>
+        <button class="as-btn" @click=${() => this.close()}>Close</button>
+      </div>
+      <div class="as-import-status" ${ref(statusRef)}></div>
+    `, this.modal);
 
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.txt,.csv,.tsv';
-    fileInput.style.display = 'none';
-
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.classList.add('as-import-dropzone-active');
-    });
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.classList.remove('as-import-dropzone-active');
-    });
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('as-import-dropzone-active');
-      const file = e.dataTransfer?.files[0];
-      if (file) this.readFile(file);
-    });
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files?.[0];
-      if (file) this.readFile(file);
-    });
-
-    this.modal.appendChild(dropZone);
-    this.modal.appendChild(fileInput);
-
-    // Table container
-    this.tableContainer = document.createElement('div');
-    this.tableContainer.className = 'as-import-table-container';
-    this.modal.appendChild(this.tableContainer);
-
-    // Controls row
-    const controls = document.createElement('div');
-    controls.className = 'as-import-controls';
-
-    // Drop missing checkbox
-    const cbLabel = document.createElement('label');
-    cbLabel.className = 'as-import-checkbox-label';
-    this.dropMissingCb = document.createElement('input');
-    this.dropMissingCb.type = 'checkbox';
-    this.dropMissingCb.checked = true;
-    cbLabel.appendChild(this.dropMissingCb);
-    cbLabel.appendChild(document.createTextNode(' Drop missing values'));
-    controls.appendChild(cbLabel);
-
-    // Buttons
-    const importSeriesBtn = document.createElement('button');
-    importSeriesBtn.className = 'as-btn';
-    importSeriesBtn.textContent = 'Import series';
-    importSeriesBtn.addEventListener('click', () => this.handleImportSeries());
-    controls.appendChild(importSeriesBtn);
-
-    const importPointersBtn = document.createElement('button');
-    importPointersBtn.className = 'as-btn';
-    importPointersBtn.textContent = 'Import pointers';
-    importPointersBtn.addEventListener('click', () => this.handleImportPointers());
-    controls.appendChild(importPointersBtn);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'as-btn';
-    closeBtn.textContent = 'Close';
-    closeBtn.addEventListener('click', () => this.close());
-    controls.appendChild(closeBtn);
-
-    this.modal.appendChild(controls);
-
-    // Status line
-    this.statusEl = document.createElement('div');
-    this.statusEl.className = 'as-import-status';
-    this.modal.appendChild(this.statusEl);
+    this.tableContainer = tableRef.value!;
+    this.statusEl = statusRef.value!;
+    this.dropMissingCb = dropMissingRef.value!;
 
     // Paste handler on modal
     this.modal.addEventListener('paste', (e) => {
@@ -205,64 +163,56 @@ class ImportDialog {
   // -------------------------------------------------------------------------
 
   private renderTable(): void {
-    this.tableContainer.innerHTML = '';
-
-    if (this.headers.length === 0) return;
-
-    const table = document.createElement('table');
-    table.className = 'as-import-table';
-
-    // Header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    for (const colIdx of this.columnOrder) {
-      const th = document.createElement('th');
-      th.textContent = this.headers[colIdx];
-      th.draggable = true;
-      th.dataset.colIdx = String(colIdx);
-
-      // Drag-reorder headers
-      th.addEventListener('dragstart', (e) => {
-        e.dataTransfer?.setData('text/plain', String(colIdx));
-      });
-      th.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        th.classList.add('as-import-th-drag-over');
-      });
-      th.addEventListener('dragleave', () => {
-        th.classList.remove('as-import-th-drag-over');
-      });
-      th.addEventListener('drop', (e) => {
-        e.preventDefault();
-        th.classList.remove('as-import-th-drag-over');
-        const fromIdx = parseInt(e.dataTransfer?.getData('text/plain') ?? '', 10);
-        if (isNaN(fromIdx)) return;
-        this.reorderColumn(fromIdx, colIdx);
-      });
-
-      headerRow.appendChild(th);
+    if (this.headers.length === 0) {
+      render(html``, this.tableContainer);
+      return;
     }
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
 
-    // Body
-    const tbody = document.createElement('tbody');
-    for (const row of this.data) {
-      const tr = document.createElement('tr');
-      for (const colIdx of this.columnOrder) {
-        const td = document.createElement('td');
-        const cellVal = row[colIdx] ?? '';
-        td.textContent = cellVal;
-        if (cellVal === '') {
-          td.classList.add('as-import-cell-empty');
-        }
-        tr.appendChild(td);
-      }
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
+    const handleDragStart = (e: DragEvent, colIdx: number) => {
+      e.dataTransfer?.setData('text/plain', String(colIdx));
+    };
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).classList.add('as-import-th-drag-over');
+    };
+    const handleDragLeave = (e: DragEvent) => {
+      (e.currentTarget as HTMLElement).classList.remove('as-import-th-drag-over');
+    };
+    const handleDrop = (e: DragEvent, toColIdx: number) => {
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).classList.remove('as-import-th-drag-over');
+      const fromIdx = parseInt(e.dataTransfer?.getData('text/plain') ?? '', 10);
+      if (isNaN(fromIdx)) return;
+      this.reorderColumn(fromIdx, toColIdx);
+    };
 
-    this.tableContainer.appendChild(table);
+    render(html`
+      <table class="as-import-table">
+        <thead>
+          <tr>
+            ${this.columnOrder.map((colIdx) => html`
+              <th draggable="true" data-col-idx=${colIdx}
+                @dragstart=${(e: DragEvent) => handleDragStart(e, colIdx)}
+                @dragover=${handleDragOver}
+                @dragleave=${handleDragLeave}
+                @drop=${(e: DragEvent) => handleDrop(e, colIdx)}>
+                ${this.headers[colIdx]}
+              </th>
+            `)}
+          </tr>
+        </thead>
+        <tbody>
+          ${this.data.map((row) => html`
+            <tr>
+              ${this.columnOrder.map((colIdx) => {
+                const cellVal = row[colIdx] ?? '';
+                return html`<td class=${cellVal === '' ? 'as-import-cell-empty' : ''}>${cellVal}</td>`;
+              })}
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `, this.tableContainer);
   }
 
   private reorderColumn(fromColIdx: number, toColIdx: number): void {
@@ -375,7 +325,6 @@ class ImportDialog {
       }
 
       if (hasDuplicates) {
-        // Create averaged series (group by X, mean Y)
         const groups = new Map<number, number[]>();
         for (let i = 0; i < sortedX.length; i++) {
           const key = sortedX[i];
@@ -408,7 +357,6 @@ class ImportDialog {
           values: avgY,
         });
 
-        // Create original series with duplicates preserved
         const origId = generateId();
         const origColor = generateColor(avgColor);
         prevColor = origColor;
