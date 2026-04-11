@@ -16,7 +16,7 @@ vi.mock('plotly.js-dist-min', () => {
 });
 
 import { createDisplayTogetherWindow } from './displayTogether';
-import { mockSeriesItem, resetFixtureIds } from '../fixtures';
+import { mockSeriesItem, resetFixtureIds, stripLitMarkers } from '../fixtures';
 
 describe('createDisplayTogetherWindow', () => {
   afterEach(() => resetFixtureIds());
@@ -75,6 +75,6 @@ describe('createDisplayTogetherWindow', () => {
   it('snapshot of toolbar', () => {
     const win = createDisplayTogetherWindow(makeItems(2));
     const toolbar = win.element.querySelector('.as-display-toolbar')!;
-    expect(toolbar.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(toolbar.innerHTML)).toMatchSnapshot();
   });
 });

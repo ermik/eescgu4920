@@ -2,6 +2,8 @@
  * D7b — Sinusoidal Series generator window.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -50,109 +52,101 @@ export function createDefineSinusoidalWindow(callbacks: {
   const el = document.createElement('div');
   el.className = 'as-window as-define-sinusoidal-window';
 
-  // 3-column params
-  const paramsGrid = document.createElement('div');
-  paramsGrid.className = 'as-sin-params';
+  // Input refs for domain
+  const startRef = createRef<HTMLInputElement>();
+  const endRef = createRef<HTMLInputElement>();
+  const nbRef = createRef<HTMLInputElement>();
+  const sigmaRef = createRef<HTMLInputElement>();
+  // Input refs for sinusoid #1
+  const f1Ref = createRef<HTMLInputElement>();
+  const a1Ref = createRef<HTMLInputElement>();
+  const p1Ref = createRef<HTMLInputElement>();
+  // Input refs for sinusoid #2
+  const f2Ref = createRef<HTMLInputElement>();
+  const a2Ref = createRef<HTMLInputElement>();
+  const p2Ref = createRef<HTMLInputElement>();
+  // Formula and plot refs
+  const formulaRef = createRef<HTMLDivElement>();
+  const plotRef = createRef<HTMLDivElement>();
 
-  function makeFieldset(legend: string, fields: [string, string][]): { fs: HTMLElement; inputs: Map<string, HTMLInputElement> } {
-    const fs = document.createElement('fieldset');
-    const leg = document.createElement('legend');
-    leg.textContent = legend;
-    fs.appendChild(leg);
-
-    const inputs = new Map<string, HTMLInputElement>();
-    for (const [label, value] of fields) {
-      const lbl = document.createElement('label');
-      lbl.textContent = label + ':';
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.step = 'any';
-      input.value = value;
-      lbl.appendChild(input);
-      fs.appendChild(lbl);
-      inputs.set(label, input);
-    }
-    return { fs, inputs };
+  function onParamChange() {
+    updateFormula();
+    generate();
   }
 
-  const domain = makeFieldset('Domain', [
-    ['Start', '0'], ['End', '1000'], ['Nb points', '1000'], ['Noise \u03c3', '0.2'],
-  ]);
-  const sin1 = makeFieldset('Sinusoid #1', [
-    ['Freq', '10'], ['Amplitude', '3.0'], ['Phase', '0.0'],
-  ]);
-  const sin2 = makeFieldset('Sinusoid #2', [
-    ['Freq', '200'], ['Amplitude', '0.5'], ['Phase', '0.0'],
-  ]);
+  function fieldset(legend: string, fields: [string, string, ReturnType<typeof createRef<HTMLInputElement>>][]) {
+    return html`
+      <fieldset>
+        <legend>${legend}</legend>
+        ${fields.map(([label, value, r]) => html`
+          <label>${label}:<input type="number" step="any" .value=${value}
+            ${ref(r)} @input=${onParamChange}></label>
+        `)}
+      </fieldset>
+    `;
+  }
 
-  paramsGrid.appendChild(domain.fs);
-  paramsGrid.appendChild(sin1.fs);
-  paramsGrid.appendChild(sin2.fs);
+  const template = html`
+    <div class="as-sin-params">
+      ${fieldset('Domain', [
+        ['Start', '0', startRef],
+        ['End', '1000', endRef],
+        ['Nb points', '1000', nbRef],
+        ['Noise \u03c3', '0.2', sigmaRef],
+      ])}
+      ${fieldset('Sinusoid #1', [
+        ['Freq', '10', f1Ref],
+        ['Amplitude', '3.0', a1Ref],
+        ['Phase', '0.0', p1Ref],
+      ])}
+      ${fieldset('Sinusoid #2', [
+        ['Freq', '200', f2Ref],
+        ['Amplitude', '0.5', a2Ref],
+        ['Phase', '0.0', p2Ref],
+      ])}
+    </div>
+    <div class="as-formula" ${ref(formulaRef)}></div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+    <div class="as-button-bar">
+      <button class="as-btn" @click=${generate}>Generate</button>
+      <button class="as-btn" @click=${handleImport}>Import series</button>
+      <button class="as-btn" @click=${() => closeCallback?.()}>Close</button>
+    </div>
+  `;
 
-  // Formula display
-  const formula = document.createElement('div');
-  formula.className = 'as-formula';
+  render(template, el);
 
   function updateFormula() {
-    const a1 = sin1.inputs.get('Amplitude')!.value;
-    const f1 = sin1.inputs.get('Freq')!.value;
-    const p1 = sin1.inputs.get('Phase')!.value;
-    const a2 = sin2.inputs.get('Amplitude')!.value;
-    const f2 = sin2.inputs.get('Freq')!.value;
-    const p2 = sin2.inputs.get('Phase')!.value;
-    const sigma = domain.inputs.get('Noise \u03c3')!.value;
-    formula.innerHTML =
-      `y = ${a1}\u00b7sin(2\u03c0\u00b7${f1}\u00b7x + ${p1}) + ${a2}\u00b7sin(2\u03c0\u00b7${f2}\u00b7x + ${p2}) + N(0, ${sigma})`;
+    const a1 = a1Ref.value!.value;
+    const f1v = f1Ref.value!.value;
+    const p1v = p1Ref.value!.value;
+    const a2 = a2Ref.value!.value;
+    const f2v = f2Ref.value!.value;
+    const p2v = p2Ref.value!.value;
+    const sigma = sigmaRef.value!.value;
+    formulaRef.value!.innerHTML =
+      `y = ${a1}\u00b7sin(2\u03c0\u00b7${f1v}\u00b7x + ${p1v}) + ${a2}\u00b7sin(2\u03c0\u00b7${f2v}\u00b7x + ${p2v}) + N(0, ${sigma})`;
   }
   updateFormula();
 
-  // Plot
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  // Buttons
-  const buttonBar = document.createElement('div');
-  buttonBar.className = 'as-button-bar';
-
-  const btnGenerate = document.createElement('button');
-  btnGenerate.className = 'as-btn';
-  btnGenerate.textContent = 'Generate';
-
-  const btnImport = document.createElement('button');
-  btnImport.className = 'as-btn';
-  btnImport.textContent = 'Import series';
-
-  const btnClose = document.createElement('button');
-  btnClose.className = 'as-btn';
-  btnClose.textContent = 'Close';
-
-  buttonBar.appendChild(btnGenerate);
-  buttonBar.appendChild(btnImport);
-  buttonBar.appendChild(btnClose);
-
-  el.appendChild(paramsGrid);
-  el.appendChild(formula);
-  el.appendChild(plotContainer);
-  el.appendChild(buttonBar);
-
   // Engine
-  const engine = new PlotEngine(plotContainer);
+  const engine = new PlotEngine(plotRef.value!);
   let traceId = -1;
   let currentIndex: Float64Array = new Float64Array(0);
   let currentValues: Float64Array = new Float64Array(0);
 
   function generate() {
-    const start = parseFloat(domain.inputs.get('Start')!.value) || 0;
-    const end = parseFloat(domain.inputs.get('End')!.value) || 1000;
-    const n = Math.max(2, parseInt(domain.inputs.get('Nb points')!.value, 10) || 1000);
-    const sigma = parseFloat(domain.inputs.get('Noise \u03c3')!.value) || 0;
+    const start = parseFloat(startRef.value!.value) || 0;
+    const end = parseFloat(endRef.value!.value) || 1000;
+    const n = Math.max(2, parseInt(nbRef.value!.value, 10) || 1000);
+    const sigma = parseFloat(sigmaRef.value!.value) || 0;
 
-    const f1 = parseFloat(sin1.inputs.get('Freq')!.value) || 0;
-    const a1 = parseFloat(sin1.inputs.get('Amplitude')!.value) || 0;
-    const p1 = parseFloat(sin1.inputs.get('Phase')!.value) || 0;
-    const f2 = parseFloat(sin2.inputs.get('Freq')!.value) || 0;
-    const a2 = parseFloat(sin2.inputs.get('Amplitude')!.value) || 0;
-    const p2 = parseFloat(sin2.inputs.get('Phase')!.value) || 0;
+    const f1 = parseFloat(f1Ref.value!.value) || 0;
+    const a1 = parseFloat(a1Ref.value!.value) || 0;
+    const p1 = parseFloat(p1Ref.value!.value) || 0;
+    const f2 = parseFloat(f2Ref.value!.value) || 0;
+    const a2 = parseFloat(a2Ref.value!.value) || 0;
+    const p2 = parseFloat(p2Ref.value!.value) || 0;
 
     currentIndex = linspace(start, end, n);
     currentValues = new Float64Array(n);
@@ -183,20 +177,7 @@ export function createDefineSinusoidalWindow(callbacks: {
 
   generate();
 
-  // Wire param changes to update formula AND regenerate plot
-  for (const inputs of [domain.inputs, sin1.inputs, sin2.inputs]) {
-    for (const input of inputs.values()) {
-      input.addEventListener('input', () => {
-        updateFormula();
-        generate();
-      });
-    }
-  }
-
-  btnGenerate.addEventListener('click', generate);
-
-  // Batch F: history includes generated ID reference
-  btnImport.addEventListener('click', () => {
+  function handleImport() {
     const id = generateId();
     const item: SeriesItem = {
       id,
@@ -212,10 +193,9 @@ export function createDefineSinusoidalWindow(callbacks: {
       values: copyF64(currentValues),
     };
     callbacks.onImport(item);
-  });
+  }
 
   let closeCallback: (() => void) | null = null;
-  btnClose.addEventListener('click', () => closeCallback?.());
 
   return {
     id: 'sinusoidal',

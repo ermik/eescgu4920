@@ -16,7 +16,7 @@ vi.mock('plotly.js-dist-min', () => {
 });
 
 import { createDefineSinusoidalWindow } from './defineSinusoidal';
-import { resetFixtureIds } from '../fixtures';
+import { resetFixtureIds, stripLitMarkers } from '../fixtures';
 
 describe('createDefineSinusoidalWindow', () => {
   afterEach(() => resetFixtureIds());
@@ -43,7 +43,7 @@ describe('createDefineSinusoidalWindow', () => {
     const win = createDefineSinusoidalWindow(noop);
     const domainFs = win.element.querySelectorAll('fieldset')[0];
     const labels = Array.from(domainFs.querySelectorAll('label')).map(
-      (l) => l.childNodes[0].textContent,
+      (l) => l.textContent!.replace(/[\d.]+$/, '').trim(),
     );
     expect(labels).toEqual(['Start:', 'End:', 'Nb points:', 'Noise σ:']);
   });
@@ -52,7 +52,7 @@ describe('createDefineSinusoidalWindow', () => {
     const win = createDefineSinusoidalWindow(noop);
     const sin1Fs = win.element.querySelectorAll('fieldset')[1];
     const labels = Array.from(sin1Fs.querySelectorAll('label')).map(
-      (l) => l.childNodes[0].textContent,
+      (l) => l.textContent!.replace(/[\d.]+$/, '').trim(),
     );
     expect(labels).toEqual(['Freq:', 'Amplitude:', 'Phase:']);
   });
@@ -97,8 +97,8 @@ describe('createDefineSinusoidalWindow', () => {
   it('snapshot of params grid and formula', () => {
     const win = createDefineSinusoidalWindow(noop);
     const grid = win.element.querySelector('.as-sin-params')!;
-    expect(grid.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(grid.innerHTML)).toMatchSnapshot();
     const formula = win.element.querySelector('.as-formula')!;
-    expect(formula.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(formula.innerHTML)).toMatchSnapshot();
   });
 });

@@ -16,7 +16,7 @@ vi.mock('plotly.js-dist-min', () => {
 });
 
 import { createDefineRandomWindow } from './defineRandom';
-import { resetFixtureIds } from '../fixtures';
+import { resetFixtureIds, stripLitMarkers } from '../fixtures';
 
 describe('createDefineRandomWindow', () => {
   afterEach(() => resetFixtureIds());
@@ -80,8 +80,8 @@ describe('createDefineRandomWindow', () => {
   it('snapshot of params and button bar', () => {
     const win = createDefineRandomWindow(noop);
     const params = win.element.querySelector('.as-params-group')!;
-    expect(params.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(params.innerHTML)).toMatchSnapshot();
     const buttons = win.element.querySelector('.as-button-bar')!;
-    expect(buttons.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(buttons.innerHTML)).toMatchSnapshot();
   });
 });

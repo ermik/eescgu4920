@@ -1,5 +1,46 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`createDefineSinusoidalWindow > snapshot of params grid and formula 1`] = `"<fieldset><legend>Domain</legend><label>Start:<input type="number" step="any"></label><label>End:<input type="number" step="any"></label><label>Nb points:<input type="number" step="any"></label><label>Noise σ:<input type="number" step="any"></label></fieldset><fieldset><legend>Sinusoid #1</legend><label>Freq:<input type="number" step="any"></label><label>Amplitude:<input type="number" step="any"></label><label>Phase:<input type="number" step="any"></label></fieldset><fieldset><legend>Sinusoid #2</legend><label>Freq:<input type="number" step="any"></label><label>Amplitude:<input type="number" step="any"></label><label>Phase:<input type="number" step="any"></label></fieldset>"`;
+exports[`createDefineSinusoidalWindow > snapshot of params grid and formula 1`] = `
+"
+      
+      <fieldset>
+        <legend>Domain</legend>
+        <!---->
+          <label>Start:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>End:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>Nb points:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>Noise σ:<input type="number" step="any"></label>
+        <!---->
+      </fieldset>
+    
+      
+      <fieldset>
+        <legend>Sinusoid #1</legend>
+        <!---->
+          <label>Freq:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>Amplitude:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>Phase:<input type="number" step="any"></label>
+        <!---->
+      </fieldset>
+    
+      
+      <fieldset>
+        <legend>Sinusoid #2</legend>
+        <!---->
+          <label>Freq:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>Amplitude:<input type="number" step="any"></label>
+        <!----><!---->
+          <label>Phase:<input type="number" step="any"></label>
+        <!---->
+      </fieldset>
+    
+    "
+`;
 
 exports[`createDefineSinusoidalWindow > snapshot of params grid and formula 2`] = `"y = 3.0·sin(2π·10·x + 0.0) + 0.5·sin(2π·200·x + 0.0) + N(0, 0.2)"`;

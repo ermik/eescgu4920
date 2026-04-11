@@ -1,3 +1,12 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`createDisplayTogetherWindow > snapshot of toolbar 1`] = `"<label>Separated axis:</label><select><option value="none">none</option><option value="vertical">vertical</option><option value="horizontal">horizontal</option></select>"`;
+exports[`createDisplayTogetherWindow > snapshot of toolbar 1`] = `
+"
+      <label>Separated axis:</label>
+      <select>
+        <option value="none">none</option>
+        <option value="vertical">vertical</option>
+        <option value="horizontal">horizontal</option>
+      </select>
+    "
+`;

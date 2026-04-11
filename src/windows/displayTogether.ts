@@ -5,6 +5,8 @@
  * none, vertical (separate Y axes), horizontal (separate X axes).
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem, WorksheetItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -118,31 +120,25 @@ export function createDisplayTogetherWindow(items: SeriesItem[]): ManagedWindow 
   const el = document.createElement('div');
   el.className = 'as-window as-display-together-window';
 
-  // Toolbar
-  const toolbar = document.createElement('div');
-  toolbar.className = 'as-display-toolbar';
+  const plotRef = createRef<HTMLDivElement>();
+  const selectRef = createRef<HTMLSelectElement>();
 
-  const label = document.createElement('label');
-  label.textContent = 'Separated axis:';
+  const template = html`
+    <div class="as-display-toolbar">
+      <label>Separated axis:</label>
+      <select ${ref(selectRef)}
+        @change=${() => renderMode(selectRef.value!.value as AxisMode)}>
+        <option value="none">none</option>
+        <option value="vertical">vertical</option>
+        <option value="horizontal">horizontal</option>
+      </select>
+    </div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+  `;
 
-  const select = document.createElement('select');
-  for (const val of ['none', 'vertical', 'horizontal'] as const) {
-    const opt = document.createElement('option');
-    opt.value = val;
-    opt.textContent = val;
-    select.appendChild(opt);
-  }
+  render(template, el);
 
-  toolbar.appendChild(label);
-  toolbar.appendChild(select);
-
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  el.appendChild(toolbar);
-  el.appendChild(plotContainer);
-
-  const engine = new PlotEngine(plotContainer);
+  const engine = new PlotEngine(plotRef.value!);
   let currentMode: AxisMode = 'none';
 
   function renderMode(mode: AxisMode) {
@@ -163,10 +159,6 @@ export function createDisplayTogetherWindow(items: SeriesItem[]): ManagedWindow 
 
   // Initial render
   renderMode('none');
-
-  select.addEventListener('change', () => {
-    renderMode(select.value as AxisMode);
-  });
 
   // Window ID: sorted item IDs joined with +
   const id = items

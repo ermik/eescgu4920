@@ -2,6 +2,8 @@
  * D7a — Random Series generator window.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem } from '../types';
 import { PlotEngine } from '../plot/engine';
@@ -48,70 +50,48 @@ export function createDefineRandomWindow(callbacks: {
   const el = document.createElement('div');
   el.className = 'as-window as-define-random-window';
 
-  // Params
-  const params = document.createElement('div');
-  params.className = 'as-params-group';
+  const startRef = createRef<HTMLInputElement>();
+  const endRef = createRef<HTMLInputElement>();
+  const nbRef = createRef<HTMLInputElement>();
+  const minRef = createRef<HTMLInputElement>();
+  const maxRef = createRef<HTMLInputElement>();
+  const plotRef = createRef<HTMLDivElement>();
 
-  function addParam(label: string, value: string, min?: string, max?: string): HTMLInputElement {
-    const lbl = document.createElement('label');
-    lbl.textContent = label;
-    params.appendChild(lbl);
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.value = value;
-    input.step = 'any';
-    if (min !== undefined) input.min = min;
-    if (max !== undefined) input.max = max;
-    params.appendChild(input);
-    return input;
-  }
+  const template = html`
+    <div class="as-params-group">
+      <label>Start:</label>
+      <input type="number" value="0" step="any" ${ref(startRef)} @input=${scheduleGenerate}>
+      <label>End:</label>
+      <input type="number" value="100" step="any" ${ref(endRef)} @input=${scheduleGenerate}>
+      <label>Nb points:</label>
+      <input type="number" value="101" min="2" step="any" ${ref(nbRef)} @input=${scheduleGenerate}>
+      <label>Min value:</label>
+      <input type="number" value="0" step="any" ${ref(minRef)} @input=${scheduleGenerate}>
+      <label>Max value:</label>
+      <input type="number" value="10" step="any" ${ref(maxRef)} @input=${scheduleGenerate}>
+    </div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+    <div class="as-button-bar">
+      <button class="as-btn" @click=${generate}>Shuffle</button>
+      <button class="as-btn" @click=${handleImport}>Import series</button>
+      <button class="as-btn" @click=${() => closeCallback?.()}>Close</button>
+    </div>
+  `;
 
-  const startInput = addParam('Start:', '0');
-  const endInput = addParam('End:', '100');
-  const nbInput = addParam('Nb points:', '101', '2');
-  const minInput = addParam('Min value:', '0');
-  const maxInput = addParam('Max value:', '10');
-
-  // Plot
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  // Buttons
-  const buttonBar = document.createElement('div');
-  buttonBar.className = 'as-button-bar';
-
-  const btnShuffle = document.createElement('button');
-  btnShuffle.className = 'as-btn';
-  btnShuffle.textContent = 'Shuffle';
-
-  const btnImport = document.createElement('button');
-  btnImport.className = 'as-btn';
-  btnImport.textContent = 'Import series';
-
-  const btnClose = document.createElement('button');
-  btnClose.className = 'as-btn';
-  btnClose.textContent = 'Close';
-
-  buttonBar.appendChild(btnShuffle);
-  buttonBar.appendChild(btnImport);
-  buttonBar.appendChild(btnClose);
-
-  el.appendChild(params);
-  el.appendChild(plotContainer);
-  el.appendChild(buttonBar);
+  render(template, el);
 
   // Engine
-  const engine = new PlotEngine(plotContainer);
+  const engine = new PlotEngine(plotRef.value!);
   let traceId = -1;
   let currentIndex: Float64Array = new Float64Array(0);
   let currentValues: Float64Array = new Float64Array(0);
 
   function generate() {
-    const s = parseFloat(startInput.value);
-    const e = parseFloat(endInput.value);
-    const n = Math.max(2, parseInt(nbInput.value, 10) || 101);
-    const mn = parseFloat(minInput.value);
-    const mx = parseFloat(maxInput.value);
+    const s = parseFloat(startRef.value!.value);
+    const e = parseFloat(endRef.value!.value);
+    const n = Math.max(2, parseInt(nbRef.value!.value, 10) || 101);
+    const mn = parseFloat(minRef.value!.value);
+    const mx = parseFloat(maxRef.value!.value);
 
     currentIndex = linspace(s, e, n);
     currentValues = randomValues(n, mn, mx);
@@ -142,14 +122,7 @@ export function createDefineRandomWindow(callbacks: {
     }, 300);
   }
 
-  for (const input of [startInput, endInput, nbInput, minInput, maxInput]) {
-    input.addEventListener('input', scheduleGenerate);
-  }
-
-  btnShuffle.addEventListener('click', generate);
-
-  // Batch F: history includes generated ID reference
-  btnImport.addEventListener('click', () => {
+  function handleImport() {
     const id = generateId();
     const item: SeriesItem = {
       id,
@@ -165,10 +138,9 @@ export function createDefineRandomWindow(callbacks: {
       values: copyF64(currentValues),
     };
     callbacks.onImport(item);
-  });
+  }
 
   let closeCallback: (() => void) | null = null;
-  btnClose.addEventListener('click', () => closeCallback?.());
 
   return {
     id: 'random',

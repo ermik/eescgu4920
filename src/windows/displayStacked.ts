@@ -5,6 +5,8 @@
  * for subplots that have the same xLabel.
  */
 
+import { html, render } from 'lit';
+import { ref, createRef } from 'lit/directives/ref.js';
 import type { ManagedWindow } from '../ui/windowManager';
 import type { SeriesItem, WorksheetItem } from '../types';
 import { PlotEngine, subplotToLayoutKey } from '../plot/engine';
@@ -17,28 +19,23 @@ export function createDisplayStackedWindow(items: SeriesItem[]): ManagedWindow {
   const el = document.createElement('div');
   el.className = 'as-window as-display-stacked-window';
 
-  // Toolbar
-  const toolbar = document.createElement('div');
-  toolbar.className = 'as-display-toolbar';
+  const plotRef = createRef<HTMLDivElement>();
+  const checkboxRef = createRef<HTMLInputElement>();
 
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = 'shared-x-checkbox';
+  const template = html`
+    <div class="as-display-toolbar">
+      <input type="checkbox" id="shared-x-checkbox" ${ref(checkboxRef)}
+        @change=${() => {
+          if (checkboxRef.value!.checked) bindRelayout();
+        }}>
+      <label for="shared-x-checkbox">Shared horizontal axis</label>
+    </div>
+    <div class="as-plot-container" ${ref(plotRef)}></div>
+  `;
 
-  const label = document.createElement('label');
-  label.htmlFor = 'shared-x-checkbox';
-  label.textContent = 'Shared horizontal axis';
+  render(template, el);
 
-  toolbar.appendChild(checkbox);
-  toolbar.appendChild(label);
-
-  const plotContainer = document.createElement('div');
-  plotContainer.className = 'as-plot-container';
-
-  el.appendChild(toolbar);
-  el.appendChild(plotContainer);
-
-  const engine = new PlotEngine(plotContainer, { rows: items.length });
+  const engine = new PlotEngine(plotRef.value!, { rows: items.length });
 
   // Render traces
   function renderAll() {
@@ -60,14 +57,10 @@ export function createDisplayStackedWindow(items: SeriesItem[]): ManagedWindow {
 
   renderAll();
 
-  // Shared X axis logic — syncs zoom/pan across subplots that share an xLabel.
-  // Uses a synchronous approach: read the changed range from the relayout event
-  // and immediately push it to sibling axes via engine.relayout. A simple
-  // boolean guard prevents the recursive event from re-entering.
+  // Shared X axis logic
   let relayoutBound = false;
   let updatingSharedRange = false;
 
-  // Build groups of subplots that share the same xLabel
   function buildXLabelGroups(): Map<string, number[]> {
     const groups = new Map<string, number[]>();
     for (let i = 0; i < items.length; i++) {
@@ -79,13 +72,12 @@ export function createDisplayStackedWindow(items: SeriesItem[]): ManagedWindow {
   }
 
   function handleSharedRelayout(eventData: Record<string, unknown>) {
-    if (updatingSharedRange || !checkbox.checked) return;
+    if (updatingSharedRange || !checkboxRef.value!.checked) return;
 
     const groups = buildXLabelGroups();
     const updates: Record<string, unknown> = {};
     let hasUpdates = false;
 
-    // Detect which subplot's x-axis changed and propagate to its group
     for (let i = 0; i < items.length; i++) {
       const axisKey = subplotToLayoutKey(i, 'x');
       const rangeKey0 = `${axisKey}.range[0]`;
@@ -119,9 +111,6 @@ export function createDisplayStackedWindow(items: SeriesItem[]): ManagedWindow {
     }
 
     if (hasUpdates) {
-      // Set the guard synchronously. Plotly.relayout is async but the guard
-      // will be released after the microtask completes, which is before the
-      // next user-initiated pan event.
       updatingSharedRange = true;
       engine.relayout(updates).finally(() => {
         updatingSharedRange = false;
@@ -135,13 +124,6 @@ export function createDisplayStackedWindow(items: SeriesItem[]): ManagedWindow {
       relayoutBound = true;
     }
   }
-
-  checkbox.addEventListener('change', () => {
-    if (checkbox.checked) {
-      bindRelayout();
-    }
-    // When unchecked, the handler checks the checkbox state and no-ops
-  });
 
   // Window ID: sorted item IDs joined with +
   const id = items

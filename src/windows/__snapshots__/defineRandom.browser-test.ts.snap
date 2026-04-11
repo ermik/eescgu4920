@@ -1,5 +1,24 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`createDefineRandomWindow > snapshot of params and button bar 1`] = `"<label>Start:</label><input type="number" step="any"><label>End:</label><input type="number" step="any"><label>Nb points:</label><input type="number" step="any" min="2"><label>Min value:</label><input type="number" step="any"><label>Max value:</label><input type="number" step="any">"`;
+exports[`createDefineRandomWindow > snapshot of params and button bar 1`] = `
+"
+      <label>Start:</label>
+      <input type="number" value="0" step="any">
+      <label>End:</label>
+      <input type="number" value="100" step="any">
+      <label>Nb points:</label>
+      <input type="number" value="101" min="2" step="any">
+      <label>Min value:</label>
+      <input type="number" value="0" step="any">
+      <label>Max value:</label>
+      <input type="number" value="10" step="any">
+    "
+`;
 
-exports[`createDefineRandomWindow > snapshot of params and button bar 2`] = `"<button class="as-btn">Shuffle</button><button class="as-btn">Import series</button><button class="as-btn">Close</button>"`;
+exports[`createDefineRandomWindow > snapshot of params and button bar 2`] = `
+"
+      <button class="as-btn">Shuffle</button>
+      <button class="as-btn">Import series</button>
+      <button class="as-btn">Close</button>
+    "
+`;

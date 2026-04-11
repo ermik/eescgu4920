@@ -16,7 +16,7 @@ vi.mock('plotly.js-dist-min', () => {
 });
 
 import { createDisplayStackedWindow } from './displayStacked';
-import { mockSeriesItem, resetFixtureIds } from '../fixtures';
+import { mockSeriesItem, resetFixtureIds, stripLitMarkers } from '../fixtures';
 
 describe('createDisplayStackedWindow', () => {
   afterEach(() => resetFixtureIds());
@@ -64,6 +64,6 @@ describe('createDisplayStackedWindow', () => {
   it('snapshot of toolbar', () => {
     const win = createDisplayStackedWindow(makeItems(2));
     const toolbar = win.element.querySelector('.as-display-toolbar')!;
-    expect(toolbar.innerHTML).toMatchSnapshot();
+    expect(stripLitMarkers(toolbar.innerHTML)).toMatchSnapshot();
   });
 });
