@@ -317,6 +317,17 @@ export class PlotEngine {
     this.render();
   }
 
+  /**
+   * Clear any cached range for an axis, allowing Plotly to autorange on the
+   * next render. Call before updating trace data that changes the value range.
+   */
+  resetAxisRange(axisType: 'x' | 'y', subplotIndex: number): void {
+    const axes = this.subplotAxes[subplotIndex];
+    if (!axes) return;
+    const layoutKey = axisType === 'x' ? axes.x[0] : axes.y[0];
+    this.userRanges.delete(layoutKey);
+  }
+
   // ----- Shapes ----------------------------------------------------------
 
   /**

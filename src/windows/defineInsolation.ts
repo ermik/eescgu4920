@@ -79,6 +79,11 @@ function copyF64(src: Float64Array): Float64Array {
   return dst;
 }
 
+function numOrDefault(raw: string, fallback: number): number {
+  const v = parseFloat(raw);
+  return Number.isFinite(v) ? v : fallback;
+}
+
 type FieldKey = 'solarConst' | 'latitude' | 'longitude1' | 'longitude2';
 
 const ORBITAL_TYPES = new Set(['Eccentricity', 'Obliquity', 'Precession angle', 'Precession parameter']);
@@ -103,7 +108,7 @@ function getFieldEnabled(selectedType: string): Record<FieldKey, boolean> {
 function yLabelForType(type: string): string {
   if (type.includes('insolation')) return type + ' [W/m\u00b2]';
   if (type === 'Obliquity') return 'Obliquity [degrees]';
-  if (type.includes('Precession')) return type + ' [degrees]';
+  if (type === 'Precession angle') return 'Precession angle [degrees]';
   return type;
 }
 
@@ -293,13 +298,13 @@ export function createDefineInsolationWindow(callbacks: {
     try {
       const selectedType = typeSelect.value as InsolationType;
       const solution = solSelect.value as AstroSolution;
-      const solarConst = parseFloat(solarInput.value) || 1365;
-      const latitude = parseFloat(latInput.value) || 65;
-      const lon1 = parseFloat(lon1Input.value) || 90;
-      const lon2 = parseFloat(lon2Input.value) || 180;
-      const s = parseFloat(startInput.value) || 0;
-      const e = parseFloat(endInput.value) || 1000;
-      const st = parseFloat(stepInput.value) || 1;
+      const solarConst = numOrDefault(solarInput.value, 1365);
+      const latitude = numOrDefault(latInput.value, 65);
+      const lon1 = numOrDefault(lon1Input.value, 90);
+      const lon2 = numOrDefault(lon2Input.value, 180);
+      const s = numOrDefault(startInput.value, 0);
+      const e = numOrDefault(endInput.value, 1000);
+      const st = numOrDefault(stepInput.value, 1);
       if (st <= 0) return;
 
       const isReversed = dirSelect.value === 'Past > 0';
@@ -351,9 +356,13 @@ export function createDefineInsolationWindow(callbacks: {
         engine.configureAxis('x', 0, { title: `Time (${unitSelect.value})` });
         engine.configureAxis('y', 0, { title: yLabel });
       } else {
+        engine.resetAxisRange('x', 0);
+        engine.resetAxisRange('y', 0);
+        engine.beginUpdate();
         engine.updateTrace(traceId, { x: currentIndex, y: currentValues, name: selectedType });
         engine.configureAxis('x', 0, { title: `Time (${unitSelect.value})` });
         engine.configureAxis('y', 0, { title: yLabel });
+        engine.endUpdate();
       }
     } catch (err) {
       console.error('Insolation computation error:', err);
