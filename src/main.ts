@@ -51,6 +51,9 @@ import { createDefineInsolationWindow } from './windows/defineInsolation';
 import { createDefineCorrelationWindow } from './windows/defineCorrelation';
 import { createDefineSpectralWindow } from './windows/defineSpectral';
 import { createDefineFreqFilterWindow } from './windows/defineFreqFilter';
+import { createDefineFittingWindow } from './windows/defineFitting';
+import { createDefineNoiseWindow } from './windows/defineNoise';
+import { createDefineIceVolumeWindow } from './windows/defineIceVolume';
 import { createDefineInterpolationWindow, applyInterpolation } from './windows/interpolation/index';
 import { importExcelWorksheet, exportExcelWorksheet } from './io/excel';
 
@@ -413,7 +416,10 @@ async function main(): Promise<void> {
     sep,
     { label: 'Random Series', action: () => openGeneratorWindow('random') },
     { label: 'Sinusoidal Series', action: () => openGeneratorWindow('sinusoidal') },
+    { label: 'Noise Series', action: () => openGeneratorWindow('noise') },
     { label: 'Insolation / Astronomical Series', action: () => openGeneratorWindow('insolation') },
+    sep,
+    { label: 'Ice Volume Model...', action: () => handleDefineIceVolume() },
   ]);
 
   menuBar.addMenu('Display', [
@@ -439,6 +445,7 @@ async function main(): Promise<void> {
     sep,
     { label: 'Define Correlation', shortcut: 'Ctrl+R', action: () => handleDefineCorrelation() },
     sep,
+    { label: 'Fitting...', action: () => handleDefineFitting() },
     { label: 'Spectral Analysis...', action: () => handleDefineSpectral() },
   ]);
 
@@ -912,6 +919,74 @@ async function main(): Promise<void> {
   }
 
   // -----------------------------------------------------------------------
+  // Fitting handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineFitting(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length !== 1) {
+      setStatus('Select exactly 1 series for fitting.');
+      return;
+    }
+
+    const item = seriesItems[0].item as SeriesItem;
+    const winId = 'fitting-' + item.id;
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+
+    const win = createDefineFittingWindow(item, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
+      windowManager.close(winId);
+    };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // Ice volume handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineIceVolume(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length !== 1) {
+      setStatus('Select exactly 1 insolation series for ice volume model.');
+      return;
+    }
+
+    const item = seriesItems[0].item as SeriesItem;
+    const winId = 'icevol-' + item.id;
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+
+    const win = createDefineIceVolumeWindow(item, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
+      windowManager.close(winId);
+    };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
   // Frequency filter handler
   // -----------------------------------------------------------------------
 
@@ -952,7 +1027,7 @@ async function main(): Promise<void> {
   // Generator windows
   // -----------------------------------------------------------------------
 
-  function openGeneratorWindow(type: 'random' | 'sinusoidal' | 'insolation'): void {
+  function openGeneratorWindow(type: 'random' | 'sinusoidal' | 'insolation' | 'noise'): void {
     if (windowManager.get(type)) { windowManager.focus(type); return; }
 
     const onImport = (item: SeriesItem) => {
@@ -973,6 +1048,9 @@ async function main(): Promise<void> {
         break;
       case 'insolation':
         win = createDefineInsolationWindow({ onImport });
+        break;
+      case 'noise':
+        win = createDefineNoiseWindow({ onImport });
         break;
     }
     (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
