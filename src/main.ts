@@ -49,6 +49,8 @@ import { createDefineRandomWindow } from './windows/defineRandom';
 import { createDefineSinusoidalWindow } from './windows/defineSinusoidal';
 import { createDefineInsolationWindow } from './windows/defineInsolation';
 import { createDefineCorrelationWindow } from './windows/defineCorrelation';
+import { createDefineSpectralWindow } from './windows/defineSpectral';
+import { createDefineFreqFilterWindow } from './windows/defineFreqFilter';
 import { createDefineInterpolationWindow, applyInterpolation } from './windows/interpolation/index';
 import { importExcelWorksheet, exportExcelWorksheet } from './io/excel';
 
@@ -426,6 +428,8 @@ async function main(): Promise<void> {
     { label: 'Define Filter', shortcut: 'Ctrl+F', action: () => handleDefineFilter() },
     { label: 'Apply Filter', action: () => handleApplyFilter() },
     sep,
+    { label: 'Frequency Filter...', action: () => handleDefineFreqFilter() },
+    sep,
     { label: 'Define Sampling', shortcut: 'Ctrl+A', action: () => handleDefineSampling() },
     { label: 'Apply Sampling', action: () => handleApplySampling() },
     sep,
@@ -434,6 +438,8 @@ async function main(): Promise<void> {
     { label: 'Apply Interpolation (PCHIP)', action: () => handleApplyInterpolation('PCHIP') },
     sep,
     { label: 'Define Correlation', shortcut: 'Ctrl+R', action: () => handleDefineCorrelation() },
+    sep,
+    { label: 'Spectral Analysis...', action: () => handleDefineSpectral() },
   ]);
 
   menuBar.addMenu('Help', [
@@ -865,6 +871,77 @@ async function main(): Promise<void> {
     };
 
     const win = createDefineCorrelationWindow(items, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
+      windowManager.close(winId);
+    };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // Spectral analysis handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineSpectral(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length !== 1) {
+      setStatus('Select exactly 1 series for spectral analysis.');
+      return;
+    }
+
+    const item = seriesItems[0].item as SeriesItem;
+    const winId = 'spectral-' + item.id;
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+
+    const win = createDefineSpectralWindow([item], { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
+      windowManager.close(winId);
+    };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // Frequency filter handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineFreqFilter(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length !== 1) {
+      setStatus('Select exactly 1 series for frequency filtering.');
+      return;
+    }
+
+    const item = seriesItems[0].item as SeriesItem;
+    const wsId = seriesItems[0].wsId;
+    const winId = 'freqfilter-' + item.id;
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const win = createDefineFreqFilterWindow(item, {
+      onSaveFiltered: (newItem: SeriesItem) => {
+        const ws = worksheets.get(wsId);
+        if (!ws) return;
+        const srcIdx = ws.items.findIndex(i => i.id === item.id);
+        tree.addItem(wsId, newItem, srcIdx >= 0 ? srcIdx + 1 : undefined);
+        ws.modified = true;
+        tree.markModified(wsId);
+        setStatus(`Filtered series saved: ${newItem.name}`);
+      },
+    });
     (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
       windowManager.close(winId);
     };
