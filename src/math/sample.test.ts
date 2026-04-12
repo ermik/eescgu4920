@@ -60,6 +60,21 @@ describe('Resampling', () => {
     expectArrayClose(values, [2, 5, 7], 1e-10);
   });
 
+  test('cubic spline — last segment evaluated correctly', () => {
+    // Regression: buildNaturalCubicSpline binary search must find the
+    // last interval. With 3 data points and a steep final segment, using
+    // the wrong segment gives a wildly different result.
+    const { values } = resample(
+      new Float64Array([0, 1, 2]),
+      new Float64Array([0, 0, 10]),
+      [1.5],
+      'cubic',
+      false,
+    );
+    expect(values[0]).toBeGreaterThan(1);   // must reflect the steep rise
+    expect(values[0]).toBeLessThanOrEqual(10);
+  });
+
   test('integrated with single valid point returns empty', () => {
     const { index, values } = resample(
       new Float64Array([0, 1, 2]),

@@ -299,7 +299,7 @@ function buildNaturalCubicSpline(
 
     // Binary search for interval k
     let lo = 0;
-    let hi = n - 2;
+    let hi = n - 1;
     while (lo < hi - 1) {
       const mid = (lo + hi) >>> 1;
       if (xs[mid] <= x) lo = mid;

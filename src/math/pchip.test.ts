@@ -36,6 +36,25 @@ describe('PCHIP interpolation', () => {
     expectClose(r[2], 2 * 0.5 - 1, 1e-10, 'x=0.5');
   });
 
+  test('asymmetric 3-point data — last segment used correctly', () => {
+    // Regression: findSegment must return segment 1 for queries in [x1, x2]
+    // With the off-by-one bug (hi = n-2), segment 0 was used instead,
+    // giving ~2.025 instead of the correct ~4.1
+    const r = pchipInterp([0, 1, 2], [0, 1, 10], [1.5]);
+    expect(r[0]).toBeGreaterThan(3);
+    expect(r[0]).toBeLessThan(8);
+  });
+
+  test('4-point data — query in last segment', () => {
+    // Regression: with 4 knots, queries in the last interval [x2, x3]
+    // must use segment 2 (not segment 1)
+    const xs = [0, 1, 2, 3];
+    const ys = [0, 0, 0, 10]; // steep rise only in the last segment
+    const r = pchipInterp(xs, ys, [2.5]);
+    expect(r[0]).toBeGreaterThan(1);   // must reflect the steep rise
+    expect(r[0]).toBeLessThanOrEqual(10);
+  });
+
   test('createPchipInterpFn consistent with pchipInterp', () => {
     const xs = [0, 1, 2, 3];
     const ys = [0, 1, 4, 9];
