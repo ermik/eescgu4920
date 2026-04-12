@@ -54,6 +54,10 @@ import { createDefineFreqFilterWindow } from './windows/defineFreqFilter';
 import { createDefineFittingWindow } from './windows/defineFitting';
 import { createDefineNoiseWindow } from './windows/defineNoise';
 import { createDefineIceVolumeWindow } from './windows/defineIceVolume';
+import { createDefineHistogramWindow } from './windows/defineHistogram';
+import { createDefineSimpleFunctionWindow } from './windows/defineSimpleFunction';
+import { createDefineSSAWindow } from './windows/defineSSA';
+import { createDefinePCAWindow } from './windows/definePCA';
 import { createDefineInterpolationWindow, applyInterpolation } from './windows/interpolation/index';
 import { importExcelWorksheet, exportExcelWorksheet } from './io/excel';
 
@@ -446,7 +450,12 @@ async function main(): Promise<void> {
     { label: 'Define Correlation', shortcut: 'Ctrl+R', action: () => handleDefineCorrelation() },
     sep,
     { label: 'Fitting...', action: () => handleDefineFitting() },
+    { label: 'Simple Function...', action: () => handleDefineSimpleFunction() },
+    { label: 'Histogram...', action: () => handleDefineHistogram() },
+    sep,
     { label: 'Spectral Analysis...', action: () => handleDefineSpectral() },
+    { label: 'SSA...', action: () => handleDefineSSA() },
+    { label: 'PCA...', action: () => handleDefinePCA() },
   ]);
 
   menuBar.addMenu('Help', [
@@ -915,6 +924,126 @@ async function main(): Promise<void> {
     (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => {
       windowManager.close(winId);
     };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // Histogram handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineHistogram(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length !== 1) {
+      setStatus('Select exactly 1 series for histogram.');
+      return;
+    }
+    const item = seriesItems[0].item as SeriesItem;
+    const winId = 'histogram-' + item.id;
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+    const win = createDefineHistogramWindow(item, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => { windowManager.close(winId); };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // Simple Function handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineSimpleFunction(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length < 1 || seriesItems.length > 2) {
+      setStatus('Select 1 or 2 series for Simple Function.');
+      return;
+    }
+    const items = seriesItems.map(s => s.item as SeriesItem);
+    const winId = 'simplefn-' + items.map(i => i.id).join('-');
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+    const win = createDefineSimpleFunctionWindow(items, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => { windowManager.close(winId); };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // SSA handler
+  // -----------------------------------------------------------------------
+
+  function handleDefineSSA(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length !== 1) {
+      setStatus('Select exactly 1 series for SSA.');
+      return;
+    }
+    const item = seriesItems[0].item as SeriesItem;
+    const winId = 'ssa-' + item.id;
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+    const win = createDefineSSAWindow(item, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => { windowManager.close(winId); };
+    windowManager.open(win);
+  }
+
+  // -----------------------------------------------------------------------
+  // PCA handler
+  // -----------------------------------------------------------------------
+
+  function handleDefinePCA(): void {
+    const selected = tree.getSelectedItems();
+    const seriesItems = selected.filter(
+      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
+        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
+    );
+    if (seriesItems.length < 2) {
+      setStatus('Select at least 2 series for PCA.');
+      return;
+    }
+    const items = seriesItems.map(s => s.item as SeriesItem);
+    const winId = 'pca-' + items.map(i => i.id).sort().join('+');
+    if (windowManager.get(winId)) { windowManager.focus(winId); return; }
+
+    const onImport = (newItem: SeriesItem) => {
+      const ws = getOrCreateCurrentWs();
+      tree.addItem(ws.id, newItem);
+      ws.modified = true;
+      tree.markModified(ws.id);
+      setStatus(`Imported "${newItem.name}" into "${ws.name}".`);
+    };
+    const win = createDefinePCAWindow(items, { onImport });
+    (win as ManagedWindow & { _closeCallback: (() => void) | null })._closeCallback = () => { windowManager.close(winId); };
     windowManager.open(win);
   }
 
