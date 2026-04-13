@@ -26,6 +26,11 @@ export function createDefineSSAWindow(
   const el = document.createElement('div');
   el.className = 'as-window as-define-ssa-window';
   const N = item.index.length;
+  // Cap the default window length: the eigendecomposition is O(M³)-ish, so a
+  // naive N/3 default on a multi-thousand-point series freezes the UI thread
+  // the moment the window opens. 40 is a sensible SSA default; users can raise
+  // it manually if they want more resolution.
+  const defaultWindow = Math.min(Math.floor(N / 3), 40);
   const winRef = createRef<HTMLInputElement>();
   const ncompRef = createRef<HTMLInputElement>();
   const plotRef = createRef<HTMLDivElement>();
@@ -33,18 +38,13 @@ export function createDefineSSAWindow(
   let curResult: ReturnType<typeof ssa> | null = null;
 
   const template = html`
-    <div style="padding:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:120px">Window length:</label>
-        <input type="number" .value=${String(Math.floor(N / 3))} min="2" max=${N - 1}
-          style="width:70px;font-size:12px" ${ref(winRef)} @input=${sched}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:120px">Components:</label>
-        <input type="number" .value=${'5'} min="1"
-          style="width:70px;font-size:12px" ${ref(ncompRef)} @input=${sched}>
-      </div>
-      <div style="font-size:11px;color:#666">Series: ${item.name} (${N} pts)</div>
+    <div class="as-params-group">
+      <label>Window length:</label>
+      <input type="number" .value=${String(defaultWindow)} min="2" max=${N - 1}
+        ${ref(winRef)} @input=${sched}>
+      <label>Components:</label>
+      <input type="number" .value=${'5'} min="1" ${ref(ncompRef)} @input=${sched}>
+      <span class="as-param-info">${item.name} · ${N} pts</span>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">
@@ -64,7 +64,7 @@ export function createDefineSSAWindow(
 
   function compute() {
     try {
-      const wl = Math.round(numOrDefault(winRef.value?.value ?? '', Math.floor(N / 3)));
+      const wl = Math.round(numOrDefault(winRef.value?.value ?? '', defaultWindow));
       const nc = Math.round(numOrDefault(ncompRef.value?.value ?? '', 5));
       curResult = ssa(item.values, { windowLength: wl, nComponents: nc });
       const rec = new Float64Array(curResult.reconstruction);

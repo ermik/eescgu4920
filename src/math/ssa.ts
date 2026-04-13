@@ -164,51 +164,57 @@ function jacobiEigen(
   const v = new Float64Array(n * n);
   for (let i = 0; i < n; i++) v[i * n + i] = 1;
 
-  const maxIter = 100 * n * n;
+  // Cyclic Jacobi sweeps: annihilate every off-diagonal (p,q) pair once per
+  // sweep. Avoids the O(n²) max-element search that classical Jacobi performs
+  // before every rotation — for large n that scan dominates and can freeze the
+  // UI thread. Cyclic Jacobi has the same quadratic convergence in practice.
+  const maxSweeps = 50;
+  const tol = 1e-12;
 
-  for (let iter = 0; iter < maxIter; iter++) {
-    // Find largest off-diagonal element
-    let maxVal = 0;
-    let p = 0, q = 1;
-    for (let i = 0; i < n; i++) {
+  for (let sweep = 0; sweep < maxSweeps; sweep++) {
+    // Off-diagonal Frobenius norm (squared) — convergence measure
+    let off = 0;
+    for (let i = 0; i < n - 1; i++) {
       for (let j = i + 1; j < n; j++) {
-        const val = Math.abs(a[i * n + j]);
-        if (val > maxVal) { maxVal = val; p = i; q = j; }
+        const x = a[i * n + j];
+        off += x * x;
       }
     }
+    if (off < tol) break;
 
-    // Convergence check
-    if (maxVal < 1e-12) break;
+    for (let p = 0; p < n - 1; p++) {
+      for (let q = p + 1; q < n; q++) {
+        const apq = a[p * n + q];
+        if (Math.abs(apq) < 1e-14) continue;
 
-    // Compute rotation
-    const app = a[p * n + p];
-    const aqq = a[q * n + q];
-    const apq = a[p * n + q];
-    const theta = (aqq - app) / (2 * apq);
-    const t = Math.sign(theta) / (Math.abs(theta) + Math.sqrt(1 + theta * theta));
-    const c = 1 / Math.sqrt(1 + t * t);
-    const s = t * c;
+        const app = a[p * n + p];
+        const aqq = a[q * n + q];
+        const theta = (aqq - app) / (2 * apq);
+        const signTheta = theta >= 0 ? 1 : -1;
+        const t = signTheta / (Math.abs(theta) + Math.sqrt(1 + theta * theta));
+        const c = 1 / Math.sqrt(1 + t * t);
+        const s = t * c;
 
-    // Update matrix
-    a[p * n + p] = app - t * apq;
-    a[q * n + q] = aqq + t * apq;
-    a[p * n + q] = 0;
-    a[q * n + p] = 0;
+        a[p * n + p] = app - t * apq;
+        a[q * n + q] = aqq + t * apq;
+        a[p * n + q] = 0;
+        a[q * n + p] = 0;
 
-    for (let r = 0; r < n; r++) {
-      if (r === p || r === q) continue;
-      const arp = a[r * n + p];
-      const arq = a[r * n + q];
-      a[r * n + p] = a[p * n + r] = c * arp - s * arq;
-      a[r * n + q] = a[q * n + r] = s * arp + c * arq;
-    }
+        for (let r = 0; r < n; r++) {
+          if (r === p || r === q) continue;
+          const arp = a[r * n + p];
+          const arq = a[r * n + q];
+          a[r * n + p] = a[p * n + r] = c * arp - s * arq;
+          a[r * n + q] = a[q * n + r] = s * arp + c * arq;
+        }
 
-    // Update eigenvectors
-    for (let r = 0; r < n; r++) {
-      const vrp = v[r * n + p];
-      const vrq = v[r * n + q];
-      v[r * n + p] = c * vrp - s * vrq;
-      v[r * n + q] = s * vrp + c * vrq;
+        for (let r = 0; r < n; r++) {
+          const vrp = v[r * n + p];
+          const vrq = v[r * n + q];
+          v[r * n + p] = c * vrp - s * vrq;
+          v[r * n + q] = s * vrp + c * vrq;
+        }
+      }
     }
   }
 
