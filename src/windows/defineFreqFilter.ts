@@ -77,38 +77,25 @@ export function createDefineFreqFilterWindow(
   }
 
   const template = html`
-    <div style="display:flex;gap:16px;padding:8px;flex-wrap:wrap">
-      <div style="min-width:200px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:110px">Center freq:</label>
-          <input type="number" .value=${String((nyquist / 4).toFixed(4))} step="any" min="0"
-            style="width:90px;font-size:12px" ${ref(centerRef)} @input=${scheduleCompute}>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:110px">Bandwidth:</label>
-          <input type="number" .value=${String((nyquist / 10).toFixed(4))} step="any" min="0.0001"
-            style="width:90px;font-size:12px" ${ref(bwRef)} @input=${scheduleCompute}>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:110px">Shape:</label>
-          <select style="font-size:12px" ${ref(shapeRef)} @change=${scheduleCompute}>
-            <option value="gaussian">Gaussian</option>
-            <option value="cosine-taper">Piecewise linear</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:110px">Notch filter:</label>
-          <input type="checkbox" ${ref(notchRef)} @change=${scheduleCompute}>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:110px">Taper width:</label>
-          <input type="number" .value=${'0.25'} step="0.05" min="0" max="0.5"
-            style="width:70px;font-size:12px" ${ref(taperRef)} @input=${scheduleCompute}>
-        </div>
-        <div style="font-size:11px;color:#666;margin-top:4px">
-          Nyquist: ${nyquist.toFixed(4)} · dt=${dt.toFixed(3)} · N=${N}
-        </div>
-      </div>
+    <div class="as-params-group">
+      <label>Center freq:</label>
+      <input type="number" .value=${String((nyquist / 4).toFixed(4))} step="any" min="0"
+        ${ref(centerRef)} @input=${scheduleCompute}>
+      <label>Bandwidth:</label>
+      <input type="number" .value=${String((nyquist / 10).toFixed(4))} step="any" min="0.0001"
+        ${ref(bwRef)} @input=${scheduleCompute}>
+      <label>Shape:</label>
+      <select ${ref(shapeRef)} @change=${scheduleCompute}>
+        <option value="gaussian">Gaussian</option>
+        <option value="cosine-taper">Piecewise linear</option>
+      </select>
+      <label><input type="checkbox" ${ref(notchRef)} @change=${scheduleCompute}> Notch filter</label>
+      <label>Taper width:</label>
+      <input type="number" .value=${'0.25'} step="0.05" min="0" max="0.5"
+        ${ref(taperRef)} @input=${scheduleCompute}>
+      <span class="as-param-info">
+        Nyquist: ${nyquist.toFixed(4)} · dt=${dt.toFixed(3)} · N=${N}
+      </span>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">

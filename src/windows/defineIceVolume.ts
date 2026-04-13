@@ -61,39 +61,27 @@ export function createDefineIceVolumeWindow(
   Fmean /= item.values.length;
 
   const template = html`
-    <div style="padding:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Model:</label>
-        <select style="font-size:12px" ${ref(modelRef)}
-          @change=${() => { updateVisibility(); scheduleCompute(); }}>
-          ${MODELS.map(m => html`<option value=${m.value}>${m.label}</option>`)}
-        </select>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">τ growth (kyr):</label>
-        <input type="number" .value=${'30'} step="any" min="1"
-          style="width:80px;font-size:12px" ${ref(tauGRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">τ decay (kyr):</label>
-        <input type="number" .value=${'10'} step="any" min="1"
-          style="width:80px;font-size:12px" ${ref(tauDRef)} @input=${scheduleCompute}>
-      </div>
-      <div class="thresh-opts">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:100px">Threshold 1:</label>
-          <input type="number" .value=${String((Fmean - 10).toFixed(1))} step="any"
-            style="width:80px;font-size:12px" ${ref(thresh1Ref)} @input=${scheduleCompute}>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:100px">Threshold 2:</label>
-          <input type="number" .value=${'1.5'} step="any"
-            style="width:80px;font-size:12px" ${ref(thresh2Ref)} @input=${scheduleCompute}>
-        </div>
-      </div>
-      <div style="font-size:11px;color:#666;margin-top:4px">
-        Forcing: ${item.name} (mean=${Fmean.toFixed(1)} W/m²)
-      </div>
+    <div class="as-params-group">
+      <label>Model:</label>
+      <select ${ref(modelRef)}
+        @change=${() => { updateVisibility(); scheduleCompute(); }}>
+        ${MODELS.map(m => html`<option value=${m.value}>${m.label}</option>`)}
+      </select>
+      <label>τ growth (kyr):</label>
+      <input type="number" .value=${'30'} step="any" min="1"
+        ${ref(tauGRef)} @input=${scheduleCompute}>
+      <label>τ decay (kyr):</label>
+      <input type="number" .value=${'10'} step="any" min="1"
+        ${ref(tauDRef)} @input=${scheduleCompute}>
+      <span class="as-param-group-inline thresh-opts">
+        <label>Threshold 1:</label>
+        <input type="number" .value=${String((Fmean - 10).toFixed(1))} step="any"
+          ${ref(thresh1Ref)} @input=${scheduleCompute}>
+        <label>Threshold 2:</label>
+        <input type="number" .value=${'1.5'} step="any"
+          ${ref(thresh2Ref)} @input=${scheduleCompute}>
+      </span>
+      <span class="as-param-info">${item.name} · mean=${Fmean.toFixed(1)} W/m²</span>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">
@@ -112,8 +100,10 @@ export function createDefineIceVolumeWindow(
   function updateVisibility() {
     const model = modelRef.value?.value ?? 'calder';
     const threshOpts = el.querySelector('.thresh-opts') as HTMLElement | null;
-    if (threshOpts) threshOpts.style.display =
-      (model === 'paillard' || model === 'paillard-parrenin') ? '' : 'none';
+    if (threshOpts) threshOpts.toggleAttribute(
+      'hidden',
+      !(model === 'paillard' || model === 'paillard-parrenin'),
+    );
   }
   updateVisibility();
 

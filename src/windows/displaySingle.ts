@@ -152,7 +152,7 @@ function buildDataTable(item: SeriesItem): HTMLElement {
 
   render(html`
     ${capped ? html`
-      <div style="padding:4px 8px; font-size:12px; color:#888; background:#fffbe6; border-bottom:1px solid #eee">
+      <div class="as-data-banner">
         Showing ${displayCount.toLocaleString()} of ${total.toLocaleString()} rows.
       </div>
     ` : ''}

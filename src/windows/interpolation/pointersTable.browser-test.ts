@@ -45,7 +45,7 @@ describe('pointersTable', () => {
 
     const table = container.querySelector('table')!;
     expect(table).toBeTruthy();
-    expect(table.className).toBe('as-data-table');
+    expect(table.className).toBe('as-pointers-table');
 
     const ths = table.querySelectorAll('th');
     expect(ths.length).toBe(2);
@@ -56,14 +56,17 @@ describe('pointersTable', () => {
     expect(rows.length).toBe(3);
   });
 
-  it('alternating row colors', () => {
+  it('alternating row colors (via :nth-child CSS on .as-pointers-table)', () => {
     const container = createPointersTable();
     const state = makeState();
     state.connections.push(conn(0, 0, 0), conn(1, 10, 12));
     updatePointersTable(container, state);
     const rows = container.querySelectorAll('tbody tr');
-    expect((rows[0] as HTMLElement).style.backgroundColor).toBe('white');
-    expect((rows[1] as HTMLElement).style.backgroundColor).toBe('whitesmoke');
+    expect(rows.length).toBe(2);
+    // Styling is handled by the .as-pointers-table tr:nth-child(even) rule
+    // in style.css — we only verify the table carries the right class here.
+    const table = container.querySelector('table')!;
+    expect(table.className).toBe('as-pointers-table');
   });
 
   it('snapshot with 3 tie points', () => {

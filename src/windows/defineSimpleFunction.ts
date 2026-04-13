@@ -47,21 +47,16 @@ export function createDefineSimpleFunctionWindow(
   let closeCallback: (() => void) | null = null;
 
   const template = html`
-    <div style="padding:12px">
-      <div style="font-size:12px;margin-bottom:8px">
-        Series: ${items.map(i => i.name).join(', ')}
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Operation:</label>
-        <select style="font-size:12px" ${ref(opRef)} @change=${updateParamVisibility}>
-          ${ops.map(o => html`<option value=${o.value}>${o.label}</option>`)}
-        </select>
-      </div>
-      <div class="param-row" style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Parameter k:</label>
-        <input type="number" .value=${'1'} step="any"
-          style="width:80px;font-size:12px" ${ref(paramRef)}>
-      </div>
+    <div class="as-params-group">
+      <label>Operation:</label>
+      <select ${ref(opRef)} @change=${updateParamVisibility}>
+        ${ops.map(o => html`<option value=${o.value}>${o.label}</option>`)}
+      </select>
+      <span class="as-param-group-inline param-row">
+        <label>Parameter k:</label>
+        <input type="number" .value=${'1'} step="any" ${ref(paramRef)}>
+      </span>
+      <span class="as-param-info">${items.map(i => i.name).join(', ')}</span>
     </div>
     <div class="as-button-bar">
       <button class="as-btn" @click=${doApply}>Apply</button>
@@ -72,7 +67,7 @@ export function createDefineSimpleFunctionWindow(
   function updateParamVisibility() {
     const row = el.querySelector('.param-row') as HTMLElement | null;
     const op = opRef.value?.value ?? '';
-    if (row) row.style.display = (op === 'scale' || op === 'offset') ? '' : 'none';
+    if (row) row.toggleAttribute('hidden', !(op === 'scale' || op === 'offset'));
   }
   updateParamVisibility();
 

@@ -33,21 +33,16 @@ export function createDefineHistogramWindow(
   let curVals = new Float64Array(0);
 
   const template = html`
-    <div style="padding:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Mode:</label>
-        <select style="font-size:12px" ${ref(modeRef)} @change=${sched}>
-          <option value="probability-density">Probability density</option>
-          <option value="cumulative-probability">Cumulative probability</option>
-          <option value="counts">Counts</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Bin width:</label>
-        <input type="number" .value=${'0'} step="any" min="0"
-          style="width:80px;font-size:12px" ${ref(bwRef)} @input=${sched}>
-        <span style="font-size:11px;color:#666">(0 = auto)</span>
-      </div>
+    <div class="as-params-group">
+      <label>Mode:</label>
+      <select ${ref(modeRef)} @change=${sched}>
+        <option value="probability-density">Probability density</option>
+        <option value="cumulative-probability">Cumulative probability</option>
+        <option value="counts">Counts</option>
+      </select>
+      <label>Bin width:</label>
+      <input type="number" .value=${'0'} step="any" min="0" ${ref(bwRef)} @input=${sched}>
+      <span class="as-param-info">(0 = auto)</span>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">

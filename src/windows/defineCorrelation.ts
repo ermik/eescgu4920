@@ -94,27 +94,22 @@ export function createDefineCorrelationWindow(
   const plotRef = createRef<HTMLDivElement>();
 
   const template = html`
-    <div style="display:flex;gap:12px;align-items:center;padding:8px;flex-wrap:wrap">
-      <label style="font-size:12px">Mode:</label>
-      <select style="font-size:12px" ${ref(modeSelectRef)} @change=${compute}>
+    <div class="as-params-group">
+      <label>Mode:</label>
+      <select ${ref(modeSelectRef)} @change=${compute}>
         <option value="correlation">correlation</option>
         <option value="covariance">covariance</option>
         <option value="crossproduct">crossproduct</option>
       </select>
-      <label style="font-size:12px">
-        <input type="checkbox" checked ${ref(fftCbRef)} @change=${compute}> Use FFT
-      </label>
-      <label style="font-size:12px">
-        <input type="checkbox" checked ${ref(meanCbRef)} @change=${compute}> Remove mean
-      </label>
+      <label><input type="checkbox" checked ${ref(fftCbRef)} @change=${compute}> Use FFT</label>
+      <label><input type="checkbox" checked ${ref(meanCbRef)} @change=${compute}> Remove mean</label>
       ${isAuto ? html`
-        <label style="font-size:12px">Max lag:</label>
+        <label>Max lag:</label>
         <input type="number" value="" placeholder="auto"
-          style="width:60px;font-size:12px"
           ${ref(maxLagRef)} @change=${compute}>
       ` : ''}
+      <span class="as-param-info" ${ref(statusRef)}></span>
     </div>
-    <div style="padding:0 8px;font-size:11px;color:#666" ${ref(statusRef)}></div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">
       <button class="as-btn" @click=${handleImport}>Import series</button>

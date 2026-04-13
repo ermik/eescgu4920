@@ -50,52 +50,31 @@ export function createDefineNoiseWindow(
   let currentValues: Float64Array = new Float64Array(0);
 
   const template = html`
-    <div style="padding:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Distribution:</label>
-        <select style="font-size:12px" ${ref(typeRef)} @change=${scheduleCompute}>
-          <option value="gaussian">Gaussian</option>
-          <option value="uniform">Uniform</option>
-          <option value="exponential">Exponential</option>
-          <option value="double-exponential">Double Exponential</option>
-          <option value="lorentzian">Lorentzian</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Points:</label>
-        <input type="number" .value=${'1000'} min="1" style="width:80px;font-size:12px"
-          ${ref(nRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Start:</label>
-        <input type="number" .value=${'0'} step="any" style="width:80px;font-size:12px"
-          ${ref(startRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">End:</label>
-        <input type="number" .value=${'999'} step="any" style="width:80px;font-size:12px"
-          ${ref(endRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Center:</label>
-        <input type="number" .value=${'0'} step="any" style="width:80px;font-size:12px"
-          ${ref(centerRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Variance:</label>
-        <input type="number" .value=${'1'} step="any" min="0.001" style="width:80px;font-size:12px"
-          ${ref(varRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Red noise (ρ):</label>
-        <input type="number" .value=${'0'} step="0.1" min="-0.99" max="0.99"
-          style="width:80px;font-size:12px" ${ref(redRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:100px">Seed:</label>
-        <input type="number" .value=${'42'} min="0" style="width:80px;font-size:12px"
-          ${ref(seedRef)} @input=${scheduleCompute}>
-      </div>
+    <div class="as-params-group">
+      <label>Distribution:</label>
+      <select ${ref(typeRef)} @change=${scheduleCompute}>
+        <option value="gaussian">Gaussian</option>
+        <option value="uniform">Uniform</option>
+        <option value="exponential">Exponential</option>
+        <option value="double-exponential">Double Exponential</option>
+        <option value="lorentzian">Lorentzian</option>
+      </select>
+      <label>Points:</label>
+      <input type="number" .value=${'1000'} min="1" ${ref(nRef)} @input=${scheduleCompute}>
+      <label>Start:</label>
+      <input type="number" .value=${'0'} step="any" ${ref(startRef)} @input=${scheduleCompute}>
+      <label>End:</label>
+      <input type="number" .value=${'999'} step="any" ${ref(endRef)} @input=${scheduleCompute}>
+      <label>Center:</label>
+      <input type="number" .value=${'0'} step="any" ${ref(centerRef)} @input=${scheduleCompute}>
+      <label>Variance:</label>
+      <input type="number" .value=${'1'} step="any" min="0.001"
+        ${ref(varRef)} @input=${scheduleCompute}>
+      <label>Red noise (ρ):</label>
+      <input type="number" .value=${'0'} step="0.1" min="-0.99" max="0.99"
+        ${ref(redRef)} @input=${scheduleCompute}>
+      <label>Seed:</label>
+      <input type="number" .value=${'42'} min="0" ${ref(seedRef)} @input=${scheduleCompute}>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">

@@ -143,8 +143,8 @@ export function createDefineInsolationWindow(callbacks: {
   // --- Field row helper (returns a lit template) ---
   function fieldRow(label: string, content: unknown) {
     return html`
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:120px">${label}</label>
+      <div class="as-field-row">
+        <label>${label}</label>
         ${content}
       </div>
     `;
@@ -154,7 +154,7 @@ export function createDefineInsolationWindow(callbacks: {
     <div class="as-insolation-layout">
       <div>
         ${fieldRow('Type:', html`
-          <select style="width:100%;font-size:12px" ${ref(typeSelectRef)}
+          <select ${ref(typeSelectRef)}
             @change=${() => { updateFieldStates(); scheduleCompute(); }}>
             ${TYPES.map(t =>
               t === '---'
@@ -164,64 +164,55 @@ export function createDefineInsolationWindow(callbacks: {
           </select>
         `)}
         ${fieldRow('Solution:', html`
-          <select style="width:100%;font-size:12px" ${ref(solSelectRef)}
+          <select ${ref(solSelectRef)}
             @change=${() => { updateFieldStates(); updateRefText(); scheduleCompute(); }}>
             ${SOLUTIONS.map(s => html`<option value=${s}>${s}</option>`)}
           </select>
         `)}
         ${fieldRow('Solar constant (W/m\u00b2):', html`
           <input type="number" .value=${'1365'} step="any" min="1000" max="1500"
-            style="width:80px;font-size:12px" ${ref(solarInputRef)}
-            @input=${scheduleCompute}>
+            ${ref(solarInputRef)} @input=${scheduleCompute}>
         `)}
         ${fieldRow('Latitude (\u00b0):', html`
           <input type="number" .value=${'65'} step="any" min="-90" max="90"
-            style="width:80px;font-size:12px" ${ref(latInputRef)}
-            @input=${scheduleCompute}>
+            ${ref(latInputRef)} @input=${scheduleCompute}>
         `)}
         ${fieldRow('True longitude #1 (\u00b0):', html`
           <input type="number" .value=${'90'} step="any" min="0" max="360"
-            style="width:80px;font-size:12px" ${ref(lon1InputRef)}
-            @input=${scheduleCompute}>
+            ${ref(lon1InputRef)} @input=${scheduleCompute}>
         `)}
         ${fieldRow('True longitude #2 (\u00b0):', html`
           <input type="number" .value=${'180'} step="any" min="0" max="360"
-            style="width:80px;font-size:12px" ${ref(lon2InputRef)}
-            @input=${scheduleCompute}>
+            ${ref(lon2InputRef)} @input=${scheduleCompute}>
         `)}
         ${fieldRow('Time direction:', html`
-          <select style="font-size:12px" ${ref(dirSelectRef)}
-            @change=${scheduleCompute}>
+          <select ${ref(dirSelectRef)} @change=${scheduleCompute}>
             <option value="Past < 0">Past &lt; 0</option>
             <option value="Past > 0">Past &gt; 0</option>
           </select>
         `)}
         ${fieldRow('Time unit:', html`
-          <select style="font-size:12px" ${ref(unitSelectRef)}
-            @change=${scheduleCompute}>
+          <select ${ref(unitSelectRef)} @change=${scheduleCompute}>
             <option value="yr">yr</option>
             <option value="kyr" selected>kyr</option>
           </select>
         `)}
         ${fieldRow('Start:', html`
           <input type="number" .value=${'0'} step="any"
-            style="width:80px;font-size:12px" ${ref(startInputRef)}
-            @input=${scheduleCompute}>
+            ${ref(startInputRef)} @input=${scheduleCompute}>
         `)}
         ${fieldRow('End:', html`
           <input type="number" .value=${'1000'} step="any"
-            style="width:80px;font-size:12px" ${ref(endInputRef)}
-            @input=${scheduleCompute}>
+            ${ref(endInputRef)} @input=${scheduleCompute}>
         `)}
         ${fieldRow('Step:', html`
           <input type="number" .value=${'1'} step="any"
-            style="width:80px;font-size:12px" ${ref(stepInputRef)}
-            @input=${scheduleCompute}>
+            ${ref(stepInputRef)} @input=${scheduleCompute}>
         `)}
       </div>
       <div class="as-insolation-ref">
         <div ${ref(refTextRef)}>${unsafeHTML(SOLUTION_REFS[SOLUTIONS[0]] || '')}</div>
-        <div style="margin-top:8px" ${ref(rangeTextRef)}>${SOLUTION_RANGES[SOLUTIONS[0]] || ''}</div>
+        <div class="as-insolation-range" ${ref(rangeTextRef)}>${SOLUTION_RANGES[SOLUTIONS[0]] || ''}</div>
       </div>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>

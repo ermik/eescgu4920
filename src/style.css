@@ -673,6 +673,14 @@ body {
   text-align: right;
 }
 
+.as-data-banner {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: #fffbe6;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .as-row-duplicate {
   background: #fffde7 !important;
 }
@@ -758,13 +766,32 @@ body {
   width: 70px;
 }
 
-/* Params form (D5, D7, D8) */
+/* =========================================================================
+   Shared — Parameter forms (used by every Define/Display window)
+   =========================================================================
+   One horizontal wrapping row of (label, input, label, input, …). This is
+   the canonical layout for parameter forms across the app. Use as:
+
+     <div class="as-params-group">
+       <label>Mode:</label>
+       <select>…</select>
+       <label>Step:</label>
+       <input type="number">
+       <span class="as-param-info">extra info</span>
+     </div>
+
+   Rules: NEVER add inline styles for font-size / width / margin / padding on
+   controls inside .as-params-group — the styles below apply uniformly. Use
+   <span class="as-param-group-inline"> to wrap a conditionally-hidden
+   subgroup whose children should still lay out inline (display:contents).
+   ========================================================================= */
 .as-params-group {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 6px 14px;
   align-items: center;
   flex-shrink: 0;
 }
@@ -772,6 +799,9 @@ body {
 .as-params-group label {
   font-size: 12px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .as-params-group input,
@@ -790,6 +820,33 @@ body {
 .as-params-group input:disabled,
 .as-params-group select:disabled {
   opacity: 0.4;
+}
+
+/* Muted info/status text that sits inline with params (pushes to the right). */
+.as-param-info {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+/* Inline error banner shown inside a window when a computation fails.
+   Keeps the message in view instead of letting it disappear into the console. */
+.as-error-banner {
+  padding: 8px 12px;
+  background: #fde2e2;
+  color: #8a1f1f;
+  border-bottom: 1px solid #f5a6a6;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/* Conditional inline subgroup — its children participate in the parent
+   flex layout so rows/labels don't visually group inside a box. */
+.as-param-group-inline {
+  display: contents;
+}
+.as-param-group-inline[hidden] > * {
+  display: none !important;
 }
 
 /* Tab pane — content area inside a tabbed window */
@@ -870,22 +927,74 @@ body {
   background: var(--color-bg-alt);
 }
 
-/* Insolation two-column layout (D8) */
+.as-pointers-table-container {
+  overflow: auto;
+  height: 100%;
+}
+
+.as-pointers-empty {
+  padding: 12px;
+  color: var(--color-text-muted);
+}
+
+/* Insolation two-column layout (D8) — shares form-control styling with
+   .as-params-group. Left column = stacked (label, input) rows; right column
+   = reference text. */
 .as-insolation-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  padding: 12px;
+  gap: 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
   flex-shrink: 0;
   overflow-y: auto;
-  max-height: 320px;
+  max-height: 240px;
+}
+
+.as-insolation-layout .as-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.as-insolation-layout label {
+  font-size: 12px;
+  min-width: 120px;
+}
+
+.as-insolation-layout input,
+.as-insolation-layout select {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.as-insolation-layout input[type=number] {
+  width: 80px;
+}
+
+.as-insolation-layout select {
+  flex: 1;
+  min-width: 0;
+}
+
+.as-insolation-layout input:disabled,
+.as-insolation-layout select:disabled {
+  opacity: 0.4;
 }
 
 .as-insolation-ref {
   font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+.as-insolation-range {
+  margin-top: 8px;
 }
 
 /* Sinusoidal layout (D7b) */

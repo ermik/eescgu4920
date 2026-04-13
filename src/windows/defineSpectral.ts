@@ -82,75 +82,51 @@ export function createDefineSpectralWindow(
   const dt = N > 1 ? Math.abs(item.index[N - 1] - item.index[0]) / (N - 1) : 1;
 
   const template = html`
-    <div style="display:flex;gap:16px;padding:8px;flex-wrap:wrap">
-      <div style="min-width:200px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:90px">Method:</label>
-          <select style="font-size:12px" ${ref(methodRef)}
-            @change=${() => { updateVisibility(); scheduleCompute(); }}>
-            ${METHODS.map(m => html`<option value=${m}>${m}</option>`)}
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:90px">Taper:</label>
-          <select style="font-size:12px" ${ref(windowRef)} @change=${scheduleCompute}>
-            <option value="hann">Hann</option>
-            <option value="hamming">Hamming</option>
-            <option value="blackman">Blackman</option>
-            <option value="bartlett">Bartlett</option>
-            <option value="rectangular">Rectangular</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <label style="font-size:12px;min-width:90px">Detrend:</label>
-          <input type="checkbox" checked ${ref(detrendRef)} @change=${scheduleCompute}>
-        </div>
-        <!-- B-Tukey options -->
-        <div class="bt-opts" style="margin-bottom:4px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;min-width:90px">Max lag:</label>
-            <input type="number" .value=${String(Math.floor(N / 3))} min="1" max=${N - 1}
-              style="width:70px;font-size:12px" ${ref(btLagRef)} @input=${scheduleCompute}>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;min-width:90px">Lag window:</label>
-            <select style="font-size:12px" ${ref(btWindowRef)} @change=${scheduleCompute}>
-              <option value="bartlett">Bartlett</option>
-              <option value="parzen">Parzen</option>
-              <option value="tukey">Tukey</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;min-width:90px">Confidence:</label>
-            <input type="number" .value=${'0.95'} min="0.5" max="0.99" step="0.01"
-              style="width:70px;font-size:12px" ${ref(btConfRef)} @input=${scheduleCompute}>
-          </div>
-        </div>
-        <!-- Max Entropy options -->
-        <div class="me-opts" style="margin-bottom:4px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;min-width:90px">AR order:</label>
-            <input type="number" .value=${String(Math.floor(N / 3))} min="1" max=${N - 1}
-              style="width:70px;font-size:12px" ${ref(meOrderRef)} @input=${scheduleCompute}>
-          </div>
-        </div>
-        <!-- MTM options -->
-        <div class="mtm-opts" style="margin-bottom:4px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;min-width:90px">NW:</label>
-            <input type="number" .value=${'4'} min="1" max="20" step="0.5"
-              style="width:70px;font-size:12px" ${ref(mtmNwRef)} @input=${scheduleCompute}>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <label style="font-size:12px;min-width:90px">Tapers (K):</label>
-            <input type="number" .value=${'7'} min="1" max="20"
-              style="width:70px;font-size:12px" ${ref(mtmKRef)} @input=${scheduleCompute}>
-          </div>
-        </div>
-        <div style="font-size:11px;color:#666;margin-top:4px">
-          Series: ${item.name} (${N} pts, dt=${dt.toFixed(3)})
-        </div>
-      </div>
+    <div class="as-params-group">
+      <label>Method:</label>
+      <select ${ref(methodRef)}
+        @change=${() => { updateVisibility(); scheduleCompute(); }}>
+        ${METHODS.map(m => html`<option value=${m}>${m}</option>`)}
+      </select>
+      <span class="as-param-group-inline taper-row">
+        <label>Taper:</label>
+        <select ${ref(windowRef)} @change=${scheduleCompute}>
+          <option value="hann">Hann</option>
+          <option value="hamming">Hamming</option>
+          <option value="blackman">Blackman</option>
+          <option value="bartlett">Bartlett</option>
+          <option value="rectangular">Rectangular</option>
+        </select>
+      </span>
+      <label><input type="checkbox" checked ${ref(detrendRef)} @change=${scheduleCompute}> Detrend</label>
+      <span class="as-param-group-inline bt-opts">
+        <label>Max lag:</label>
+        <input type="number" .value=${String(Math.floor(N / 3))} min="1" max=${N - 1}
+          ${ref(btLagRef)} @input=${scheduleCompute}>
+        <label>Lag window:</label>
+        <select ${ref(btWindowRef)} @change=${scheduleCompute}>
+          <option value="bartlett">Bartlett</option>
+          <option value="parzen">Parzen</option>
+          <option value="tukey">Tukey</option>
+        </select>
+        <label>Confidence:</label>
+        <input type="number" .value=${'0.95'} min="0.5" max="0.99" step="0.01"
+          ${ref(btConfRef)} @input=${scheduleCompute}>
+      </span>
+      <span class="as-param-group-inline me-opts">
+        <label>AR order:</label>
+        <input type="number" .value=${String(Math.floor(N / 3))} min="1" max=${N - 1}
+          ${ref(meOrderRef)} @input=${scheduleCompute}>
+      </span>
+      <span class="as-param-group-inline mtm-opts">
+        <label>NW:</label>
+        <input type="number" .value=${'4'} min="1" max="20" step="0.5"
+          ${ref(mtmNwRef)} @input=${scheduleCompute}>
+        <label>Tapers (K):</label>
+        <input type="number" .value=${'7'} min="1" max="20"
+          ${ref(mtmKRef)} @input=${scheduleCompute}>
+      </span>
+      <span class="as-param-info">${item.name} · ${N} pts · dt=${dt.toFixed(3)}</span>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">
@@ -171,16 +147,14 @@ export function createDefineSpectralWindow(
   // Visibility
   function updateVisibility() {
     currentMethod = (methodRef.value?.value ?? 'Periodogram') as Method;
-    const btOpts = el.querySelector('.bt-opts') as HTMLElement | null;
-    const meOpts = el.querySelector('.me-opts') as HTMLElement | null;
-    const mtmOpts = el.querySelector('.mtm-opts') as HTMLElement | null;
-    const taperRow = windowRef.value?.parentElement;
-
-    if (btOpts) btOpts.style.display = currentMethod === 'Blackman-Tukey' ? '' : 'none';
-    if (meOpts) meOpts.style.display = currentMethod === 'Max. Entropy' ? '' : 'none';
-    if (mtmOpts) mtmOpts.style.display = currentMethod === 'MTM' ? '' : 'none';
-    if (taperRow) (taperRow as HTMLElement).style.display =
-      currentMethod === 'Periodogram' ? '' : 'none';
+    const toggle = (sel: string, show: boolean) => {
+      const node = el.querySelector(sel) as HTMLElement | null;
+      if (node) node.toggleAttribute('hidden', !show);
+    };
+    toggle('.bt-opts', currentMethod === 'Blackman-Tukey');
+    toggle('.me-opts', currentMethod === 'Max. Entropy');
+    toggle('.mtm-opts', currentMethod === 'MTM');
+    toggle('.taper-row', currentMethod === 'Periodogram');
   }
   updateVisibility();
 

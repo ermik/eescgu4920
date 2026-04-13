@@ -52,27 +52,23 @@ export function createDefineFittingWindow(
   const defaultStep = N > 1 ? Math.abs(xMax - xMin) / (N - 1) : 1;
 
   const template = html`
-    <div style="padding:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Type:</label>
-        <select style="font-size:12px" ${ref(kindRef)}
-          @change=${() => { updateDegreeVisibility(); scheduleCompute(); }}>
-          <option value="polynomial">Polynomial</option>
-          <option value="piecewise-linear">Piecewise Linear</option>
-          <option value="staircase">Staircase</option>
-          <option value="cubic-spline">Cubic Spline</option>
-        </select>
-      </div>
-      <div class="degree-row" style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Degree:</label>
+    <div class="as-params-group">
+      <label>Type:</label>
+      <select ${ref(kindRef)}
+        @change=${() => { updateDegreeVisibility(); scheduleCompute(); }}>
+        <option value="polynomial">Polynomial</option>
+        <option value="piecewise-linear">Piecewise Linear</option>
+        <option value="staircase">Staircase</option>
+        <option value="cubic-spline">Cubic Spline</option>
+      </select>
+      <span class="as-param-group-inline degree-row">
+        <label>Degree:</label>
         <input type="number" .value=${'1'} min="0" max="20"
-          style="width:60px;font-size:12px" ${ref(degreeRef)} @input=${scheduleCompute}>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <label style="font-size:12px;min-width:80px">Step:</label>
-        <input type="number" .value=${String(defaultStep.toFixed(4))} step="any" min="0.0001"
-          style="width:90px;font-size:12px" ${ref(stepRef)} @input=${scheduleCompute}>
-      </div>
+          ${ref(degreeRef)} @input=${scheduleCompute}>
+      </span>
+      <label>Step:</label>
+      <input type="number" .value=${String(defaultStep.toFixed(4))} step="any" min="0.0001"
+        ${ref(stepRef)} @input=${scheduleCompute}>
     </div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">
@@ -93,8 +89,9 @@ export function createDefineFittingWindow(
   engine.configureAxis('y', 0, { title: item.yLabel });
 
   function updateDegreeVisibility() {
+    const show = kindRef.value?.value === 'polynomial';
     const row = el.querySelector('.degree-row') as HTMLElement | null;
-    if (row) row.style.display = kindRef.value?.value === 'polynomial' ? '' : 'none';
+    if (row) row.toggleAttribute('hidden', !show);
   }
   updateDegreeVisibility();
 
