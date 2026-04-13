@@ -109,6 +109,8 @@ export class PlotEngine {
   private userRanges = new Map<string, [number, number]>();
   /** Bound wheel handler for cleanup in destroy(). */
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
+  /** Observes container size so we can resize the plot when its parent grows. */
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor(container: HTMLElement, subplots?: SubplotConfig) {
     const rows = subplots?.rows ?? 1;
@@ -156,6 +158,23 @@ export class PlotEngine {
     // Custom three-zone scroll-wheel zoom (replaces Plotly's native scrollZoom).
     this.wheelHandler = (e: WheelEvent) => this.handleWheel(e);
     this.plotDiv.addEventListener('wheel', this.wheelHandler, { passive: false });
+
+    // Plotly's `responsive: true` only listens for window resize, not for
+    // container resize. The window element is typically constructed off-DOM,
+    // so the plot initializes against a 0-height container and falls back to
+    // the 700×450 default. Once the window is mounted (or any ancestor
+    // resizes — sidebar drag, tab activation, parent flex resolving), we need
+    // to tell Plotly to recompute its dimensions.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.destroyed) return;
+        // Only resize once the container has a real size.
+        if (container.clientWidth > 0 && container.clientHeight > 0) {
+          Plotly.Plots.resize(this.plotDiv);
+        }
+      });
+      this.resizeObserver.observe(container);
+    }
   }
 
   // ----- Batch control -----------------------------------------------------
@@ -449,6 +468,10 @@ export class PlotEngine {
       this.plotDiv.removeEventListener('wheel', this.wheelHandler);
       this.wheelHandler = null;
     }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     Plotly.purge(this.plotDiv);
     this.plotDiv.remove();
     this.traces.clear();
@@ -592,11 +615,27 @@ export class PlotEngine {
 
   /** Build the full Plotly layout from current engine state. */
   private buildLayout(): Record<string, unknown> {
+    // Compute margins dynamically: top/right are mostly empty unless we have
+    // a top-side twin/secondary X axis or a right-side twin Y axis. Reserving
+    // 50px of top chrome for a non-existent title was eating ~10% of plot
+    // height in shorter windows.
+    let hasTopAxis = this.secondaryXAxes.size > 0;
+    let hasRightAxis = false;
+    for (const cfg of this.twinAxisConfigs.values()) {
+      if (cfg.side === 'top') hasTopAxis = true;
+      if (cfg.side === 'right') hasRightAxis = true;
+    }
+
     const layout: Record<string, unknown> = {
       dragmode: 'pan',
       hovermode: 'closest',
       legend: { itemclick: 'toggle', itemdoubleclick: false },
-      margin: { l: 80, r: 50, t: 50, b: 60 },
+      margin: {
+        l: 60,
+        r: hasRightAxis ? 60 : 20,
+        t: hasTopAxis ? 50 : 20,
+        b: 45,
+      },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
     };
