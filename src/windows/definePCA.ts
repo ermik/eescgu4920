@@ -24,15 +24,17 @@ export function createDefinePCAWindow(
   const el = document.createElement('div');
   el.className = 'as-window as-define-pca-window';
   const plotRef = createRef<HTMLDivElement>();
+  const errorRef = createRef<HTMLDivElement>();
   let closeCallback: (() => void) | null = null;
   let result: ReturnType<typeof pca> | null = null;
 
   const template = html`
-    <div style="padding:8px">
-      <div style="font-size:12px;margin-bottom:4px">
-        Series: ${items.map(i => i.name).join(', ')} (${items.length} variables, ${items[0].index.length} pts)
-      </div>
+    <div class="as-params-group">
+      <span class="as-param-info">
+        ${items.map(i => i.name).join(', ')} · ${items.length} variables · ${items[0].index.length} pts
+      </span>
     </div>
+    <div class="as-error-banner" ${ref(errorRef)} style="display: none;"></div>
     <div class="as-plot-container" ${ref(plotRef)}></div>
     <div class="as-button-bar">
       <button class="as-btn" @click=${doImport}>Import PCs</button>
@@ -46,6 +48,17 @@ export function createDefinePCAWindow(
 
   // Compute immediately
   try {
+    // pca() requires equal-length inputs. Check up front so we can give a
+    // specific, actionable message instead of the generic RangeError.
+    const n0 = items[0].values.length;
+    const mismatch = items.find(i => i.values.length !== n0);
+    if (mismatch) {
+      throw new RangeError(
+        `All series must have the same length. "${items[0].name}" has ${n0} points `
+        + `but "${mismatch.name}" has ${mismatch.values.length}. `
+        + `Resample or interpolate to a common grid before running PCA.`,
+      );
+    }
     const valuesArrays = items.map(i => i.values);
     result = pca(valuesArrays);
     // Plot first 2 PCs
@@ -61,7 +74,15 @@ export function createDefinePCAWindow(
       });
     }
   } catch (e) {
+    // Surface the failure in the window instead of silently swallowing into
+    // the console. Without this, an empty-axes plot looks indistinguishable
+    // from "all scores are zero" and the user has no idea what happened.
+    const msg = e instanceof Error ? e.message : String(e);
     console.error('PCA error:', e);
+    if (errorRef.value) {
+      errorRef.value.textContent = `PCA failed: ${msg}`;
+      errorRef.value.style.display = 'block';
+    }
   }
 
   function doImport() {

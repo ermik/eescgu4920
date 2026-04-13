@@ -186,6 +186,18 @@ export type WorksheetItem =
   | InterpolationItem;
 
 /**
+ * Type guard: is this a series-typed item (plain, filtered, sampled, or
+ * interpolated)? Used throughout main.ts to gate menu items and handlers that
+ * operate on "any series" regardless of how it was produced.
+ */
+export function isSeriesItem(item: WorksheetItem): item is SeriesItem {
+  return item.type === 'Series'
+    || item.type === 'Series filtered'
+    || item.type === 'Series sampled'
+    || item.type === 'Series interpolated';
+}
+
+/**
  * A worksheet groups a related set of series, filters, samples, and
  * interpolation definitions together, analogous to an `.xlsx` workbook file
  * in PyAnalySeries.

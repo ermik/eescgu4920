@@ -17,6 +17,7 @@
 
 import './style.css';
 import type { Worksheet, WorksheetItem, SeriesItem } from './types';
+import { isSeriesItem } from './types';
 import type { ManagedWindow } from './ui/windowManager';
 import { generateId, generateColor, appendHistory } from './utils';
 import { initDB, loadAllWorksheets, saveWorksheet, deleteWorksheet } from './db';
@@ -385,6 +386,13 @@ async function main(): Promise<void> {
 
   const sep: MenuAction = { label: '', action: () => {}, separator: true };
 
+  // Count how many of the currently selected items are series-typed. Used by
+  // `enabled:` predicates on Process menu items so they grey out when the
+  // selection doesn't satisfy their precondition — otherwise the handlers just
+  // silently setStatus() and return, which reads as a dead menu item.
+  const seriesSelCount = () =>
+    tree.getSelectedItems().filter(s => isSeriesItem(s.item)).length;
+
   menuBar.addMenu('File', [
     { label: 'New Worksheet', shortcut: 'Ctrl+N', action: () => createNewWorksheet() },
     { label: 'Open Worksheet...', shortcut: 'Ctrl+O', action: () => { void handleOpenWorksheet(); } },
@@ -438,7 +446,11 @@ async function main(): Promise<void> {
     { label: 'Define Filter', shortcut: 'Ctrl+F', action: () => handleDefineFilter() },
     { label: 'Apply Filter', action: () => handleApplyFilter() },
     sep,
-    { label: 'Frequency Filter...', action: () => handleDefineFreqFilter() },
+    {
+      label: 'Frequency Filter...',
+      action: () => handleDefineFreqFilter(),
+      enabled: () => seriesSelCount() === 1,
+    },
     sep,
     { label: 'Define Sampling', shortcut: 'Ctrl+A', action: () => handleDefineSampling() },
     { label: 'Apply Sampling', action: () => handleApplySampling() },
@@ -447,15 +459,43 @@ async function main(): Promise<void> {
     { label: 'Apply Interpolation (Linear)', action: () => handleApplyInterpolation('Linear') },
     { label: 'Apply Interpolation (PCHIP)', action: () => handleApplyInterpolation('PCHIP') },
     sep,
-    { label: 'Define Correlation', shortcut: 'Ctrl+R', action: () => handleDefineCorrelation() },
+    {
+      label: 'Define Correlation', shortcut: 'Ctrl+R',
+      action: () => handleDefineCorrelation(),
+      enabled: () => { const n = seriesSelCount(); return n === 1 || n === 2; },
+    },
     sep,
-    { label: 'Fitting...', action: () => handleDefineFitting() },
-    { label: 'Simple Function...', action: () => handleDefineSimpleFunction() },
-    { label: 'Histogram...', action: () => handleDefineHistogram() },
+    {
+      label: 'Fitting...',
+      action: () => handleDefineFitting(),
+      enabled: () => seriesSelCount() === 1,
+    },
+    {
+      label: 'Simple Function...',
+      action: () => handleDefineSimpleFunction(),
+      enabled: () => { const n = seriesSelCount(); return n === 1 || n === 2; },
+    },
+    {
+      label: 'Histogram...',
+      action: () => handleDefineHistogram(),
+      enabled: () => seriesSelCount() === 1,
+    },
     sep,
-    { label: 'Spectral Analysis...', action: () => handleDefineSpectral() },
-    { label: 'SSA...', action: () => handleDefineSSA() },
-    { label: 'PCA...', action: () => handleDefinePCA() },
+    {
+      label: 'Spectral Analysis...',
+      action: () => handleDefineSpectral(),
+      enabled: () => seriesSelCount() === 1,
+    },
+    {
+      label: 'SSA...',
+      action: () => handleDefineSSA(),
+      enabled: () => seriesSelCount() === 1,
+    },
+    {
+      label: 'PCA...',
+      action: () => handleDefinePCA(),
+      enabled: () => seriesSelCount() >= 2,
+    },
   ]);
 
   menuBar.addMenu('Help', [
@@ -862,10 +902,7 @@ async function main(): Promise<void> {
 
   function handleDefineCorrelation(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length < 1 || seriesItems.length > 2) {
       setStatus('Select 1 series (auto-correlation) or 2 series (cross-correlation).');
       return;
@@ -899,10 +936,7 @@ async function main(): Promise<void> {
 
   function handleDefineSpectral(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length !== 1) {
       setStatus('Select exactly 1 series for spectral analysis.');
       return;
@@ -933,10 +967,7 @@ async function main(): Promise<void> {
 
   function handleDefineHistogram(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length !== 1) {
       setStatus('Select exactly 1 series for histogram.');
       return;
@@ -963,10 +994,7 @@ async function main(): Promise<void> {
 
   function handleDefineSimpleFunction(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length < 1 || seriesItems.length > 2) {
       setStatus('Select 1 or 2 series for Simple Function.');
       return;
@@ -993,10 +1021,7 @@ async function main(): Promise<void> {
 
   function handleDefineSSA(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length !== 1) {
       setStatus('Select exactly 1 series for SSA.');
       return;
@@ -1023,10 +1048,7 @@ async function main(): Promise<void> {
 
   function handleDefinePCA(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length < 2) {
       setStatus('Select at least 2 series for PCA.');
       return;
@@ -1053,10 +1075,7 @@ async function main(): Promise<void> {
 
   function handleDefineFitting(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length !== 1) {
       setStatus('Select exactly 1 series for fitting.');
       return;
@@ -1087,10 +1106,7 @@ async function main(): Promise<void> {
 
   function handleDefineIceVolume(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length !== 1) {
       setStatus('Select exactly 1 insolation series for ice volume model.');
       return;
@@ -1121,10 +1137,7 @@ async function main(): Promise<void> {
 
   function handleDefineFreqFilter(): void {
     const selected = tree.getSelectedItems();
-    const seriesItems = selected.filter(
-      s => s.item.type === 'Series' || s.item.type === 'Series filtered'
-        || s.item.type === 'Series sampled' || s.item.type === 'Series interpolated',
-    );
+    const seriesItems = selected.filter(s => isSeriesItem(s.item));
     if (seriesItems.length !== 1) {
       setStatus('Select exactly 1 series for frequency filtering.');
       return;
