@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx vite build
+      - run: node scripts/md-to-html.mjs AI-DEVELOPMENT-TIMELINE.md dist
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
